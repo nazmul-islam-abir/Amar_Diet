@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
-import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_text_field.dart';
 import '../widgets/app_button.dart';

@@ -3,6 +3,7 @@ import '../core/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/app_button.dart';
 import '../widgets/glass_text_field.dart';
+import '../widgets/gradient_background.dart';
 import '../widgets/section_header.dart';
 import '../services/api_service.dart';
 
@@ -26,8 +27,12 @@ class _PlanScreenState extends State<PlanScreen> {
     return ApiService.getPlan(date: DateTime.now());
   }
 
-  void _reload() {
-    setState(() => _future = _load());
+  Future<void> _reload() async {
+    final next = _load();
+    setState(() {
+      _future = next;
+    });
+    await next;
   }
 
   Future<void> _edit(DailyPlan current) async {
@@ -39,8 +44,10 @@ class _PlanScreenState extends State<PlanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: FutureBuilder<DailyPlan>(
+    return Scaffold(
+      body: GradientBackground(
+        child: SafeArea(
+          child: FutureBuilder<DailyPlan>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
@@ -145,21 +152,25 @@ class _PlanScreenState extends State<PlanScreen> {
                               ),
                             ),
                             const Spacer(),
-                            InkWell(
-                              onTap: () => _edit(plan),
-                              borderRadius: BorderRadius.circular(AppRadius.sm),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.15),
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.sm),
-                                ),
-                                child: const Icon(
-                                  Icons.edit_rounded,
-                                  size: 14,
-                                  color: AppColors.primaryDark,
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _edit(plan),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.sm),
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.15),
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.sm),
+                                  ),
+                                  child: const Icon(
+                                    Icons.edit_rounded,
+                                    size: 14,
+                                    color: AppColors.primaryDark,
+                                  ),
                                 ),
                               ),
                             ),
@@ -215,6 +226,8 @@ class _PlanScreenState extends State<PlanScreen> {
           );
         },
       ),
+    ),
+    ),
     );
   }
 
@@ -272,13 +285,20 @@ class _PlanStatTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
@@ -286,6 +306,8 @@ class _PlanStatTile extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -324,19 +346,26 @@ class _MacroBar extends StatelessWidget {
             children: [
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
               ),
-              const Spacer(),
-              Text(
-                '${kcal.toStringAsFixed(0)} kcal · ${grams} g',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textSecondary,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${kcal.toStringAsFixed(0)} kcal · $grams g',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],

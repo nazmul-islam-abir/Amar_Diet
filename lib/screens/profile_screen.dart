@@ -121,6 +121,64 @@ class _Body extends StatelessWidget {
   final VoidCallback onEdit;
   final Future<void> Function() onRefresh;
 
+  String _humanGoal(String? g) {
+    switch ((g ?? '').toLowerCase()) {
+      case 'lose':
+        return 'LOSE WEIGHT';
+      case 'gain':
+        return 'GAIN WEIGHT';
+      case 'maintain':
+        return 'MAINTAIN';
+      default:
+        return 'SET';
+    }
+  }
+
+  String _humanActivity(String? a) {
+    switch ((a ?? '').toLowerCase()) {
+      case 'very_active':
+        return 'Very active';
+      case 'active':
+        return 'Active';
+      case 'moderate':
+        return 'Moderate';
+      case 'light':
+        return 'Light';
+      case 'sedentary':
+        return 'Sedentary';
+      default:
+        return 'Set';
+    }
+  }
+
+  String _humanGender(String? g) {
+    switch ((g ?? '').toLowerCase()) {
+      case 'male':
+        return 'Male';
+      case 'female':
+        return 'Female';
+      case 'other':
+        return 'Other';
+      default:
+        return '—';
+    }
+  }
+
+  String _humanDiet(String? d) {
+    switch ((d ?? '').toLowerCase()) {
+      case 'vegetarian':
+        return 'Vegetarian';
+      case 'vegan':
+        return 'Vegan';
+      case 'halal':
+        return 'Halal';
+      case 'none':
+        return 'No preference';
+      default:
+        return '—';
+    }
+  }
+
   String _fmtDate(DateTime? d) {
     if (d == null) return '—';
     final m = d.month.toString().padLeft(2, '0');
@@ -141,7 +199,9 @@ class _Body extends StatelessWidget {
     final ageLabel = age == null ? '—' : '$age';
 
     final kcalTarget = profile.dailyCalorieTarget?.round() ?? 2000;
-    final waterTargetMl = 2500;
+    final waterTargetMl = profile.weightKg == null
+        ? 2500
+        : (profile.weightKg! * 35).round().clamp(2000, 4000);
     final weightStart = profile.weightKg ?? 0;
     final heightCm = profile.heightCm ?? 0;
 
@@ -332,19 +392,19 @@ class _Body extends StatelessWidget {
                   const SizedBox(height: AppSpacing.sm),
                   _GoalRow(
                     label: 'Daily water',
-                    value: '2.5 L',
+                    value: '${(waterTargetMl / 1000).toStringAsFixed(1)} L',
                     progress: 0,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _GoalRow(
                     label: 'Goal',
-                    value: (profile.goal ?? 'set').toUpperCase(),
+                    value: _humanGoal(profile.goal),
                     progress: profile.goal == null ? 0 : 1,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _GoalRow(
                     label: 'Activity',
-                    value: profile.activityLevel ?? 'set',
+                    value: _humanActivity(profile.activityLevel),
                     progress: profile.activityLevel == null ? 0 : 1,
                   ),
                 ],
@@ -409,9 +469,9 @@ class _Body extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _DetailRow('Phone', '+${profile.phone}'),
-                  _DetailRow('Gender', profile.gender ?? '—'),
+                  _DetailRow('Gender', _humanGender(profile.gender)),
                   _DetailRow('DOB', _fmtDate(profile.dateOfBirth)),
-                  _DetailRow('Diet', profile.dietPref ?? '—'),
+                  _DetailRow('Diet', _humanDiet(profile.dietPref)),
                   _DetailRow('Target weight',
                       profile.targetWeightKg == null ? '—' : '${profile.targetWeightKg} kg'),
                   _DetailRow('BMR',
@@ -466,13 +526,20 @@ class _StatTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 3),
@@ -480,6 +547,8 @@ class _StatTile extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -613,13 +682,18 @@ class _DetailRow extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
             ),
           ),
         ],

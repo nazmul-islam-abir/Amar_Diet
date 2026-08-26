@@ -23,7 +23,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
 
   Future<ProgressReport> _load() async => ApiService.getProgress();
 
-  void _reload() => setState(() => _future = _load());
+  Future<void> _reload() async {
+    final next = _load();
+    setState(() {
+      _future = next;
+    });
+    await next;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,10 +195,15 @@ class _CalorieProgressCard extends StatelessWidget {
     final inKcal = report.kcalIn;
     final outKcal = report.kcalOut;
     final target = report.kcalTarget;
-    final net = (inKcal - outKcal).clamp(0, target * 1.5);
-    final progress = target <= 0 ? 0.0 : (net / target).clamp(0.0, 1.0);
+    final safeTarget = target <= 0 ? 1.0 : target;
+    final rawNet = inKcal - outKcal;
+    final maxNet = safeTarget * 1.5;
+    final net = rawNet < 0
+        ? 0.0
+        : (rawNet > maxNet ? maxNet : rawNet.toDouble());
+    final progress = (net / safeTarget).clamp(0.0, 1.0);
     final percent = (progress * 100).round();
-    final remaining = (target - inKcal).clamp(0, target).toDouble();
+    final remaining = (safeTarget - inKcal).clamp(0.0, safeTarget);
     return GlassCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
@@ -245,6 +256,7 @@ class _CalorieProgressCard extends StatelessWidget {
                       children: [
                         Text(
                           inKcal.toStringAsFixed(0),
+                          maxLines: 1,
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -340,6 +352,8 @@ class _MacroCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -347,18 +361,25 @@ class _MacroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            value.toStringAsFixed(0),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              height: 1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value.toStringAsFixed(0),
+              maxLines: 1,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                height: 1,
+              ),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             'of ${goal.toStringAsFixed(0)} g',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -418,13 +439,20 @@ class _StatTile extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 3),
@@ -432,6 +460,8 @@ class _StatTile extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   unit,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -490,13 +520,20 @@ class _WeightCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                current == null ? '—' : current.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    current == null ? '—' : current.toStringAsFixed(1),
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 3),
@@ -504,6 +541,7 @@ class _WeightCard extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 3),
                 child: Text(
                   'kg',
+                  maxLines: 1,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -584,13 +622,20 @@ class _StreakCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                streak.toString(),
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                  height: 1,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    streak.toString(),
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
@@ -598,6 +643,7 @@ class _StreakCard extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 6),
                 child: Text(
                   'days',
+                  maxLines: 1,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

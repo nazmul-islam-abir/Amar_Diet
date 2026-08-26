@@ -3,6 +3,8 @@ import '../core/app_theme.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/app_button.dart';
+import '../services/auth_service.dart';
+import '../services/bdapps_service.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -12,209 +14,233 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  String _plan = 'Yearly';
+  String _status = 'pending';
+  String _statusDetail = '';
+  bool _loadingStatus = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  Future<void> _refreshStatus() async {
+    final phone = AuthService.instance.phone;
+    if (phone == null || phone.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _status = 'unknown';
+        _statusDetail = 'No active session';
+        _loadingStatus = false;
+      });
+      return;
+    }
+    try {
+      final res = await BdappsService.checkSubscription(phone);
+      final raw = res['subscriptionStatus']?.toString().toUpperCase().trim() ??
+          '';
+      if (!mounted) return;
+      setState(() {
+        _status = raw.isEmpty ? 'UNKNOWN' : raw;
+        _statusDetail = res['statusDetail']?.toString() ?? '';
+        _loadingStatus = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _status = 'ERROR';
+        _statusDetail = e.toString();
+        _loadingStatus = false;
+      });
+    }
+  }
+
+  bool get _isActive {
+    return _status.isNotEmpty &&
+        _status != 'UNREGISTERED' &&
+        _status != 'UNKNOWN' &&
+        _status != 'ERROR';
+  }
+
+  void _onContinue() {
+    final msg = _statusDetail.isNotEmpty
+        ? 'Current status: $_status — $_statusDetail'
+        : 'Current status: $_status';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final perMonth = _plan == 'Yearly' ? 199 : 299;
-    final save = _plan == 'Yearly' ? 35 : 0;
     return Scaffold(
       body: GradientBackground(
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xl,
-                  vertical: AppSpacing.sm,
+              SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl,
+                  AppSpacing.md,
+                  AppSpacing.xl,
+                  140,
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      color: AppColors.textPrimary,
-                    ),
-                    const Spacer(),
-                    const Text(
-                      'Subscription',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const Spacer(),
-                    const SizedBox(width: 44),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl,
-                    AppSpacing.md,
-                    AppSpacing.xl,
-                    140,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Center(
-                        child: Text(
-                          'Upgrade to Pro',
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                          color: AppColors.textPrimary,
+                        ),
+                        const Spacer(),
+                        const Text(
+                          'Subscription',
                           style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
-                            letterSpacing: -0.4,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Center(
-                        child: Text(
-                          'Unlock personalised plans & insights',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: _loadingStatus ? null : _refreshStatus,
+                          icon: const Icon(Icons.refresh_rounded),
+                          color: AppColors.textSecondary,
+                          tooltip: 'Refresh status',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    _StatusBanner(
+                      loading: _loadingStatus,
+                      active: _isActive,
+                      status: _status,
+                      detail: _statusDetail,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const Center(
+                      child: Text(
+                        'Subscribe to Pro',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          letterSpacing: -0.4,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppColors.glassWhite,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            _PlanToggle(
-                              label: 'Monthly',
-                              selected: _plan == 'Monthly',
-                              onTap: () => setState(() => _plan = 'Monthly'),
-                            ),
-                            _PlanToggle(
-                              label: 'Yearly',
-                              selected: _plan == 'Yearly',
-                              onTap: () => setState(() => _plan = 'Yearly'),
-                              badge: 'Save 35%',
-                            ),
-                          ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Center(
+                      child: Text(
+                        'Unlock personalised plans & insights',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.xl),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '৳$perMonth',
-                                  style: const TextStyle(
-                                    fontSize: 44,
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    GlassCard(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.primaryDark,
+                                    ],
+                                  ),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
+                                ),
+                                child: const Icon(
+                                  Icons.bolt_rounded,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                              const Expanded(
+                                child: Text(
+                                  'চার্জ: ২.৭৮ টাকা/দিন (ভ্যাট+এসসি+এসডি সহ)',
+                                  style: TextStyle(
+                                    fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                     color: AppColors.textPrimary,
-                                    letterSpacing: -1,
-                                    height: 1,
+                                    height: 1.3,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: 8),
-                                  child: Text(
-                                    '/ month',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const Spacer(),
-                                if (save > 0)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          AppColors.secondary,
-                                          AppColors.accent,
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(
-                                        AppRadius.pill,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      'Save $save%',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
                             ),
-                            const SizedBox(height: AppSpacing.md),
-                            const Row(
-                              children: [
-                                Icon(Icons.info_outline_rounded,
-                                    size: 14, color: AppColors.textSecondary),
-                                SizedBox(width: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              border: Border.all(
+                                color:
+                                    AppColors.secondary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: const [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 16,
+                                  color: AppColors.secondary,
+                                ),
+                                SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    '2.78 BDT Daily charge (including Vat+SC+SD)',
+                                    'শুধুমাত্র Robi ও Airtel গ্রাহকদের জন্য।',
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textSecondary,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
-                            const Text(
-                              'For Robi and Airtel Users only.',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          const Text(
+                            'Pro includes',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
                             ),
-                            const SizedBox(height: AppSpacing.lg),
-                            const Text(
-                              'Pro includes',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpacing.md),
-                            const _FeatureRow(label: 'Personalised diet plan'),
-                            const _FeatureRow(label: 'Smart meal recommendations'),
-                            const _FeatureRow(label: 'Detailed progress analytics'),
-                            const _FeatureRow(label: 'Hilsa & seasonal Bangladeshi meals'),
-                            const _FeatureRow(label: 'Ad-free experience'),
-                            const _FeatureRow(label: 'Priority support'),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          const _FeatureRow(label: 'Personalised diet plan'),
+                          const _FeatureRow(label: 'Smart meal recommendations'),
+                          const _FeatureRow(
+                              label: 'Detailed progress analytics'),
+                          const _FeatureRow(
+                              label: 'Hilsa & seasonal Bangladeshi meals'),
+                          const _FeatureRow(label: 'Ad-free experience'),
+                          const _FeatureRow(label: 'Priority support'),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
               Positioned(
@@ -222,9 +248,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 right: AppSpacing.xl,
                 bottom: AppSpacing.xl,
                 child: AppButton(
-                  label: 'Continue with $_plan',
+                  label: _isActive ? 'View current status' : 'Show current status',
                   icon: Icons.lock_rounded,
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _onContinue,
                 ),
               ),
             ],
@@ -235,81 +261,106 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 }
 
-class _PlanToggle extends StatelessWidget {
-  const _PlanToggle({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.badge,
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({
+    required this.loading,
+    required this.active,
+    required this.status,
+    required this.detail,
   });
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final String? badge;
+
+  final bool loading;
+  final bool active;
+  final String status;
+  final String detail;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              gradient: selected
-                  ? const LinearGradient(
-                      colors: [AppColors.primary, AppColors.primaryDark],
-                    )
-                  : null,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              boxShadow: [
-                if (selected)
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+    Color bg;
+    Color fg;
+    IconData icon;
+    String headline;
+    String sub;
+
+    if (loading) {
+      bg = AppColors.info.withValues(alpha: 0.12);
+      fg = AppColors.info;
+      icon = Icons.hourglass_top_rounded;
+      headline = 'সাবস্ক্রিপশন যাচাই হচ্ছে…';
+      sub = 'অপেক্ষা করুন, আপনার বর্তমান অবস্থা যাচাই করা হচ্ছে।';
+    } else if (active) {
+      bg = AppColors.success.withValues(alpha: 0.12);
+      fg = AppColors.success;
+      icon = Icons.verified_rounded;
+      headline = 'সাবস্ক্রিপশন চালু আছে ✅';
+      sub = detail.isNotEmpty
+          ? 'অবস্থা: $status — $detail'
+          : 'অবস্থা: $status। সব প্রো ফিচার ব্যবহার করুন।';
+    } else if (status == 'UNREGISTERED' || status == 'UNKNOWN') {
+      bg = AppColors.secondary.withValues(alpha: 0.12);
+      fg = AppColors.secondaryDark;
+      icon = Icons.error_outline_rounded;
+      headline = 'আপনি এখনো সাবস্ক্রাইব করেননি';
+      sub = detail.isNotEmpty
+          ? 'অবস্থা: $status — $detail'
+          : 'অবস্থা: $status। প্রো ফিচার আনলক করতে সাবস্ক্রাইব করুন।';
+    } else {
+      bg = AppColors.warning.withValues(alpha: 0.15);
+      fg = AppColors.warning;
+      icon = Icons.warning_amber_rounded;
+      headline = 'অবস্থা যাচাই করা যাচ্ছে না';
+      sub = detail.isNotEmpty
+          ? detail
+          : 'নেটওয়ার্ক সমস্যা হতে পারে। আবার চেষ্টা করুন।';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: fg.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          loading
+              ? SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: fg,
                   ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+                )
+              : Icon(icon, color: fg, size: 22),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
+                  headline,
                   style: TextStyle(
-                    color: selected ? Colors.white : AppColors.textPrimary,
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    fontSize: 13,
+                    color: fg,
                   ),
                 ),
-                if (badge != null) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                    ),
-                    child: Text(
-                      badge!,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  sub,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
+                ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

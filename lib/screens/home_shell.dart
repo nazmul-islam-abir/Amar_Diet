@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/app_theme.dart';
-import '../widgets/gradient_background.dart';
 import '../widgets/glass_bottom_nav.dart';
+import '../services/auth_service.dart';
+import 'login_screen.dart';
 import 'home_dashboard.dart';
 import 'food_browse_screen.dart';
 import 'log_meal_screen.dart';
@@ -16,7 +17,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _index = 0;
 
   static const _screens = [
@@ -26,6 +27,39 @@ class _HomeShellState extends State<HomeShell> {
     ProgressScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Initial check on launch
+    _checkStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkStatus();
+    }
+  }
+
+  /// Verifies if the user is still subscribed. If not, kicks them out.
+  Future<void> _checkStatus() async {
+    final stillAuthed = await AuthService.instance.revalidateSubscription();
+    if (!stillAuthed && mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
-import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
-import 'food_detail_screen.dart';
+import '../widgets/food_image.dart';
 import '../services/api_service.dart';
+import '../services/recommendation_engine.dart';
+import 'food_detail_screen.dart';
 
 class FoodRecommendScreen extends StatefulWidget {
   const FoodRecommendScreen({super.key});
@@ -13,66 +14,73 @@ class FoodRecommendScreen extends StatefulWidget {
 }
 
 class _FoodRecommendScreenState extends State<FoodRecommendScreen> {
-  final _controller = PageController(viewportFraction: 0.88);
+  final _controller = PageController(viewportFraction: 0.92);
   int _index = 0;
+  late Future<List<MealSuggestion>> _future;
 
-  static const _items = [
-    _FoodCard(
-      title: 'Khichuri with Egg',
-      subtitle: 'খিচুড়ি ও ডিম',
-      desc: 'A comforting one-pot mix of rice, lentils, spices and a soft-boiled egg.',
-      kcal: 480,
-      protein: 18,
-      carbs: 72,
-      fat: 14,
-      tint: AppColors.primary,
-      icon: Icons.rice_bowl_rounded,
-      ingredients: ['Rice', 'Lentils', 'Egg', 'Onion', 'Spices'],
-    ),
-    _FoodCard(
-      title: 'Masoor Dal & Rice',
-      subtitle: 'মসুর ডাল ও ভাত',
-      desc: 'Steamed rice with red lentil dal tempered with cumin and garlic.',
-      kcal: 520,
-      protein: 16,
-      carbs: 88,
-      fat: 9,
-      tint: AppColors.secondary,
-      icon: Icons.soup_kitchen_rounded,
-      ingredients: ['Rice', 'Red lentils', 'Cumin', 'Garlic'],
-    ),
-    _FoodCard(
-      title: 'Beguni & Peyaji',
-      subtitle: 'বেগুনি ও পেঁয়াজি',
-      desc: 'Crispy fried eggplant slices and onion fritters — a tea-time classic.',
-      kcal: 320,
-      protein: 6,
-      carbs: 36,
-      fat: 18,
-      tint: AppColors.accent,
-      icon: Icons.bakery_dining_rounded,
-      ingredients: ['Eggplant', 'Onion', 'Gram flour', 'Chili'],
-    ),
-    _FoodCard(
-      title: 'Hilsa Fish Curry',
-      subtitle: 'ইলিশ মাছের ঝোল',
-      desc: 'Bengali favourite Hilsa simmered in mustard and green chili.',
-      kcal: 460,
-      protein: 28,
-      carbs: 12,
-      fat: 28,
-      tint: AppColors.primaryDark,
-      icon: Icons.set_meal_rounded,
-      ingredients: ['Hilsa', 'Mustard', 'Green chili', 'Turmeric'],
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<MealSuggestion>> _load() async {
+    final results = await Future.wait([
+      ApiService.getProgress(),
+      ApiService.ensureProfile(),
+      ApiService.listMeals(date: DateTime.now()),
+    ]);
+    final ctx = RecommendationContext(
+      profile: results[1] as UserProfile,
+      progress: results[0] as ProgressReport,
+      todayMeals: results[2] as List<MealEntry>,
+    );
+    return RecommendationEngine.suggest(ctx);
+  }
+
+  Future<void> _refresh() async {
+    final next = _load();
+    setState(() {
+      _future = next;
+    });
+    await next;
+  }
+
+  IconData _iconForMeal(String type) {
+    switch (type) {
+      case 'breakfast':
+        return Icons.wb_sunny_rounded;
+      case 'lunch':
+        return Icons.lunch_dining_rounded;
+      case 'dinner':
+        return Icons.dinner_dining_rounded;
+      default:
+        return Icons.icecream_rounded;
+    }
+  }
+
+  Color _tintForMeal(String type) {
+    switch (type) {
+      case 'breakfast':
+        return AppColors.accent;
+      case 'lunch':
+        return AppColors.primary;
+      case 'dinner':
+        return AppColors.primaryDark;
+      default:
+        return AppColors.secondary;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          color: AppColors.primary,
+          child: Column(
+            children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.xl,
@@ -95,7 +103,8 @@ class _FoodRecommendScreenState extends State<FoodRecommendScreen> {
                       ),
                     ),
                     const Spacer(),
-                    const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
+                    const Icon(Icons.tune_rounded,
+                        color: AppColors.textPrimary),
                   ],
                 ),
               ),
@@ -105,7 +114,7 @@ class _FoodRecommendScreenState extends State<FoodRecommendScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Swipe to explore',
+                    'Personalised for you',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
@@ -121,7 +130,7 @@ class _FoodRecommendScreenState extends State<FoodRecommendScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Curated for your goals and dietary preferences.',
+                    'Swipe through breakfast, lunch, snack & dinner ideas.',
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -132,150 +141,292 @@ class _FoodRecommendScreenState extends State<FoodRecommendScreen> {
               ),
               const SizedBox(height: AppSpacing.xl),
               Expanded(
-                child: PageView.builder(
-                  controller: _controller,
-                  onPageChanged: (i) => setState(() => _index = i),
-                  itemCount: _items.length,
-                  itemBuilder: (_, i) {
-                    final item = _items[i];
-                    final isActive = i == _index;
-                    return AnimatedPadding(
-                      duration: const Duration(milliseconds: 320),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: isActive ? 0 : 24,
-                      ),
-                      child: _SwipeCard(
-                        item: item,
-                        onTap: () {
-                          final f = FoodItem(
-                            id: 'rec_$i',
-                            nameEn: item.title,
-                            nameBn: item.subtitle,
-                            category: 'Recommended',
-                            servingG: 100,
-                            kcalPerServing: item.kcal.toDouble(),
-                            proteinG: item.protein.toDouble(),
-                            carbsG: item.carbs.toDouble(),
-                            fatG: item.fat.toDouble(),
-                            fiberG: 0,
-                          );
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => FoodDetailScreen(food: f),
+                child: FutureBuilder<List<MealSuggestion>>(
+                  future: _future,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary),
+                      );
+                    }
+                    if (snap.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.xl),
+                          child: Text(
+                            'Could not build recommendations: ${snap.error}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      );
+                    }
+                    final items = snap.data ?? const <MealSuggestion>[];
+                    if (items.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No suggestions available.',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      );
+                    }
+                    return PageView.builder(
+                      controller: _controller,
+                      onPageChanged: (i) => setState(() => _index = i),
+                      itemCount: items.length,
+                      itemBuilder: (_, i) {
+                        final s = items[i];
+                        final isActive = i == _index;
+                        return AnimatedPadding(
+                          duration: const Duration(milliseconds: 320),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: isActive ? 0 : 24,
+                          ),
+                          child: _MealCard(
+                            suggestion: s,
+                            tint: _tintForMeal(s.mealType),
+                            icon: _iconForMeal(s.mealType),
+                            onTap: (f) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FoodDetailScreen(food: f),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (int i = 0; i < _items.length; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 240),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      height: 6,
-                      width: i == _index ? 22 : 6,
-                      decoration: BoxDecoration(
-                        color: i == _index
-                            ? AppColors.primary
-                            : AppColors.primary.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                ],
+              FutureBuilder<List<MealSuggestion>>(
+                future: _future,
+                builder: (context, snap) {
+                  final items = snap.data ?? const <MealSuggestion>[];
+                  if (items.isEmpty) return const SizedBox.shrink();
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (int i = 0; i < items.length; i++)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 240),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          height: 6,
+                          width: i == _index ? 22 : 6,
+                          decoration: BoxDecoration(
+                            color: i == _index
+                                ? AppColors.primary
+                                : AppColors.primary.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 100),
             ],
           ),
         ),
+      ),
     );
   }
 }
 
-class _FoodCard {
-  const _FoodCard({
-    required this.title,
-    required this.subtitle,
-    required this.desc,
-    required this.kcal,
-    required this.protein,
-    required this.carbs,
-    required this.fat,
+class _MealCard extends StatelessWidget {
+  const _MealCard({
+    required this.suggestion,
     required this.tint,
     required this.icon,
-    required this.ingredients,
+    required this.onTap,
   });
-  final String title;
-  final String subtitle;
-  final String desc;
-  final int kcal;
-  final int protein;
-  final int carbs;
-  final int fat;
+
+  final MealSuggestion suggestion;
   final Color tint;
   final IconData icon;
-  final List<String> ingredients;
-}
-
-class _SwipeCard extends StatelessWidget {
-  const _SwipeCard({required this.item, required this.onTap});
-  final _FoodCard item;
-  final VoidCallback onTap;
+  final ValueChanged<FoodItem> onTap;
 
   @override
   Widget build(BuildContext context) {
+    final hero = suggestion.options.isNotEmpty
+        ? suggestion.options.first
+        : null;
+
     return GlassCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
-      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 180,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  item.tint.withValues(alpha: 0.85),
-                  item.tint.withValues(alpha: 0.55),
-                ],
-              ),
-            ),
-            child: Center(
-              child: Icon(item.icon, color: Colors.white, size: 80),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
+          // Meal label + hero image of top suggestion
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      tint.withValues(alpha: 0.85),
+                      tint.withValues(alpha: 0.55),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title,
+                      suggestion.label,
                       style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.2,
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      item.subtitle,
+                      hero != null
+                          ? 'Top pick: ${hero.nameEn}'
+                          : 'No suggestions for this slot',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // Hero image of top suggestion
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: SizedBox(
+              height: 160,
+              width: double.infinity,
+              child: hero == null
+                  ? Container(
+                      color: AppColors.glassWhite,
+                      child: const Center(
+                        child: Icon(Icons.no_food_rounded,
+                            color: AppColors.textSecondary, size: 48),
+                      ),
+                    )
+                  : FoodImage(
+                      food: hero,
+                      fit: BoxFit.cover,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // All suggestions list
+          const Text(
+            'Best matches',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Expanded(
+            child: ListView.separated(
+              itemCount: suggestion.options.length,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (_, i) {
+                final f = suggestion.options[i];
+                return _OptionRow(food: f, tint: tint, onTap: () => onTap(f));
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OptionRow extends StatelessWidget {
+  const _OptionRow({
+    required this.food,
+    required this.tint,
+    required this.onTap,
+  });
+  final FoodItem food;
+  final Color tint;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: AppColors.glassWhite,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: FoodImage(
+                    food: food,
+                    fit: BoxFit.cover,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      food.nameEn,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '${food.proteinG.round()}g protein • ${food.carbsG.round()}g carbs',
+                      style: const TextStyle(
+                        fontSize: 11,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
@@ -284,91 +435,31 @@ class _SwipeCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryDark],
+                  gradient: LinearGradient(
+                    colors: [
+                      tint.withValues(alpha: 0.85),
+                      tint.withValues(alpha: 0.6),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
                 child: Text(
-                  '${item.kcal} kcal',
+                  '${food.kcal.round()} kcal',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 11,
                   ),
                 ),
               ),
+              const SizedBox(width: 4),
+              const Icon(Icons.add_rounded,
+                  color: AppColors.textPrimary, size: 18),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            item.desc,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              _MiniStat(label: 'Protein', value: '${item.protein}g'),
-              const SizedBox(width: 8),
-              _MiniStat(label: 'Carbs', value: '${item.carbs}g'),
-              const SizedBox(width: 8),
-              _MiniStat(label: 'Fat', value: '${item.fat}g'),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: const Row(
-                  children: [
-                    Text(
-                      'Add',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniStat extends StatelessWidget {
-  const _MiniStat({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Text(
-        '$label $value',
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primaryDark,
         ),
       ),
     );

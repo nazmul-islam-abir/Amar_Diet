@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
-import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/app_button.dart';
+import '../widgets/food_image.dart';
 import '../services/api_service.dart';
 
 class FoodDetailScreen extends StatefulWidget {
-  const FoodDetailScreen({super.key, required this.food});
+  const FoodDetailScreen({
+    super.key,
+    required this.food,
+    this.mealType,
+  });
   final FoodItem food;
+  final String? mealType;
 
   @override
   State<FoodDetailScreen> createState() => _FoodDetailScreenState();
@@ -15,8 +20,14 @@ class FoodDetailScreen extends StatefulWidget {
 
 class _FoodDetailScreenState extends State<FoodDetailScreen> {
   int _portion = 1;
-  String _mealType = 'snack';
+  late String _mealType;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _mealType = widget.mealType ?? 'snack';
+  }
 
   Future<void> _addToLog() async {
     setState(() => _saving = true);
@@ -47,21 +58,6 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
     }
   }
 
-  IconData _icon() {
-    final cat = widget.food.category.toLowerCase();
-    if (cat.contains('rice')) return Icons.rice_bowl_rounded;
-    if (cat.contains('curry')) return Icons.soup_kitchen_rounded;
-    if (cat.contains('fish')) return Icons.set_meal_rounded;
-    if (cat.contains('meat')) return Icons.restaurant_rounded;
-    if (cat.contains('fruit')) return Icons.eco_rounded;
-    if (cat.contains('dairy')) return Icons.icecream_rounded;
-    if (cat.contains('drink')) return Icons.local_drink_rounded;
-    if (cat.contains('snack') || cat.contains('street')) {
-      return Icons.bakery_dining_rounded;
-    }
-    return Icons.ramen_dining_rounded;
-  }
-
   @override
   Widget build(BuildContext context) {
     final f = widget.food;
@@ -77,275 +73,355 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
           SafeArea(
             child: Column(
               children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xl,
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: Row(
-                      children: [
-                        _CircleIcon(
-                          icon: Icons.arrow_back_ios_new_rounded,
-                          onTap: () => Navigator.pop(context),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      _CircleIcon(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: () => Navigator.pop(context),
+                      ),
+                      const Spacer(),
+                      const Text(
+                        'Food detail',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
-                        const Spacer(),
-                        const Text(
-                          'Food detail',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                      ),
+                      const Spacer(),
+                      _CircleIcon(
+                        icon: Icons.bookmark_outline_rounded,
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Favourites — coming soon!'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.xl,
+                      AppSpacing.md,
+                      AppSpacing.xl,
+                      140,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Hero image
+                        ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.xl),
+                          child: SizedBox(
+                            height: 220,
+                            width: double.infinity,
+                            child: FoodImage(
+                              food: f,
+                              fit: BoxFit.cover,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.xl),
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        _CircleIcon(
-                          icon: Icons.bookmark_outline_rounded,
-                          onTap: () {},
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(
+                          f.nameEn,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${f.nameBn ?? ' '}  •  Per serving (${f.servingG.round()}g)',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        // Macros pill row
+                        Row(
+                          children: [
+                            _MacroPill(
+                                label: 'Carbs',
+                                value: '${carbs.round()}g',
+                                color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            _MacroPill(
+                                label: 'Protein',
+                                value: '${protein.round()}g',
+                                color: AppColors.secondary),
+                            const SizedBox(width: 8),
+                            _MacroPill(
+                                label: 'Fat',
+                                value: '${fat.round()}g',
+                                color: AppColors.accent),
+                            const SizedBox(width: 8),
+                            _MacroPill(
+                                label: 'Fiber',
+                                value: '${fiber.round()}g',
+                                color: AppColors.info),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        GlassCard(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Nutrition breakdown',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              _NutritionBar(
+                                label: 'Carbs',
+                                value: carbs.round(),
+                                total: 260,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _NutritionBar(
+                                label: 'Protein',
+                                value: protein.round(),
+                                total: 110,
+                                color: AppColors.secondary,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _NutritionBar(
+                                label: 'Fat',
+                                value: fat.round(),
+                                total: 65,
+                                color: AppColors.accent,
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              _NutritionBar(
+                                label: 'Fiber',
+                                value: fiber.round(),
+                                total: 30,
+                                color: AppColors.info,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        GlassCard(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Portion size',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                children: [
+                                  _StepBtn(
+                                    icon: Icons.remove_rounded,
+                                    onTap: () {
+                                      if (_portion > 1) {
+                                        setState(() => _portion--);
+                                      }
+                                    },
+                                  ),
+                                  Expanded(
+                                    child: Center(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: '$_portion',
+                                              style: const TextStyle(
+                                                fontSize: 32,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                            const TextSpan(
+                                              text: ' × serving',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color:
+                                                    AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  _StepBtn(
+                                    icon: Icons.add_rounded,
+                                    onTap: () =>
+                                        setState(() => _portion++),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Container(
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.12),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.local_fire_department_rounded,
+                                      color: AppColors.secondary,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Total calories',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '${kcal.round()} kcal',
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.primaryDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        GlassCard(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Meal type',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final t in const [
+                                    'breakfast',
+                                    'lunch',
+                                    'dinner',
+                                    'snack',
+                                  ])
+                                    _MealTypeChip(
+                                      type: t,
+                                      selected: _mealType == t,
+                                      onTap: () =>
+                                          setState(() => _mealType = t),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.xl,
-                        AppSpacing.md,
-                        AppSpacing.xl,
-                        140,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: 220,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(AppRadius.xl),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppColors.primary,
-                                  AppColors.primaryDark,
-                                ],
-                              ),
-                            ),
-                            child: Center(
-                              child: Icon(_icon(), color: Colors.white, size: 88),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text(
-                            f.nameEn,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${f.nameBn ?? ' '}  •  Per serving (${f.servingG.round()}g)',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          GlassCard(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Nutrition breakdown',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                _NutritionBar(
-                                  label: 'Carbs',
-                                  value: carbs.round(),
-                                  total: 260,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                _NutritionBar(
-                                  label: 'Protein',
-                                  value: protein.round(),
-                                  total: 110,
-                                  color: AppColors.secondary,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                _NutritionBar(
-                                  label: 'Fat',
-                                  value: fat.round(),
-                                  total: 65,
-                                  color: AppColors.accent,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                _NutritionBar(
-                                  label: 'Fiber',
-                                  value: fiber.round(),
-                                  total: 30,
-                                  color: AppColors.info,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          GlassCard(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Portion size',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Row(
-                                  children: [
-                                    _StepBtn(
-                                      icon: Icons.remove_rounded,
-                                      onTap: () {
-                                        if (_portion > 1) {
-                                          setState(() => _portion--);
-                                        }
-                                      },
-                                    ),
-                                    Expanded(
-                                      child: Center(
-                                        child: RichText(
-                                          text: TextSpan(
-                                            children: [
-                                              TextSpan(
-                                                text: '$_portion',
-                                                style: const TextStyle(
-                                                  fontSize: 32,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: AppColors.textPrimary,
-                                                ),
-                                              ),
-                                              const TextSpan(
-                                                text: ' × serving',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: AppColors.textSecondary,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    _StepBtn(
-                                      icon: Icons.add_rounded,
-                                      onTap: () => setState(() => _portion++),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Container(
-                                  padding: const EdgeInsets.all(AppSpacing.md),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(AppRadius.md),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.local_fire_department_rounded,
-                                        color: AppColors.secondary,
-                                        size: 22,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Total calories',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      Text(
-                                        '${kcal.round()} kcal',
-                                        style: const TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.primaryDark,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          GlassCard(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Meal type',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.md),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    for (final t in const [
-                                      'breakfast',
-                                      'lunch',
-                                      'dinner',
-                                      'snack',
-                                    ])
-                                      _MealTypeChip(
-                                        type: t,
-                                        selected: _mealType == t,
-                                        onTap: () => setState(() => _mealType = t),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: AppSpacing.xl,
+            right: AppSpacing.xl,
+            bottom: AppSpacing.xl,
+            child: AppButton(
+              label: _saving ? 'Saving…' : 'Add to Log',
+              icon: Icons.add_rounded,
+              onPressed: _saving ? null : _addToLog,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MacroPill extends StatelessWidget {
+  const _MacroPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: color,
               ),
             ),
-            Positioned(
-              left: AppSpacing.xl,
-              right: AppSpacing.xl,
-              bottom: AppSpacing.xl,
-              child: AppButton(
-                label: _saving ? 'Saving…' : 'Add to Log',
-                icon: Icons.add_rounded,
-                onPressed: _saving ? null : _addToLog,
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
+      ),
     );
   }
 }

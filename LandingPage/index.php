@@ -570,7 +570,7 @@ $PLATFORMS = ['Android'];
     try {
       const fd = new FormData();
       fd.append('user_mobile', num);
-      // Using send_otp.php as a more reliable status check
+      // Usingave send_otp.php as a more reliable status check
       const r   = await fetch('send_otp.php', { method: 'POST', body: fd });
       const data = await r.json();
       const msgText = (data.message || '').toLowerCase();

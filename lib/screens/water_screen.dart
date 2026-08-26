@@ -25,8 +25,12 @@ class _WaterScreenState extends State<WaterScreen> {
     return ApiService.getWater(DateTime.now());
   }
 
-  void _reload() {
-    setState(() => _future = _load());
+  Future<void> _reload() async {
+    final next = _load();
+    setState(() {
+      _future = next;
+    });
+    await next;
   }
 
   Future<void> _add(int ml) async {

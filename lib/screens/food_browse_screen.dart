@@ -3,11 +3,13 @@ import '../core/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_text_field.dart';
 import '../widgets/app_button.dart';
+import '../widgets/food_image.dart';
 import '../services/api_service.dart';
 import 'food_detail_screen.dart';
 
 class FoodBrowseScreen extends StatefulWidget {
-  const FoodBrowseScreen({super.key});
+  const FoodBrowseScreen({super.key, this.initialMealType});
+  final String? initialMealType;
 
   @override
   State<FoodBrowseScreen> createState() => _FoodBrowseScreenState();
@@ -21,12 +23,12 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
   static const _categories = <_Category>[
     _Category('rice', 'Rice'),
     _Category('curry', 'Curry'),
-    _Category('snacks', 'Snacks'),
     _Category('fish', 'Fish'),
     _Category('meat', 'Meat'),
     _Category('vegetable', 'Veg'),
     _Category('fruit', 'Fruits'),
     _Category('dairy', 'Dairy'),
+    _Category('snacks', 'Snacks'),
     _Category('street_food', 'Street'),
     _Category('drink', 'Drinks'),
   ];
@@ -42,8 +44,11 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final next = _load();
+    setState(() {
+      _future = next;
+    });
+    await next;
   }
 
   @override
@@ -91,10 +96,12 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
               const SizedBox(height: AppSpacing.lg),
               GlassTextField(
                 hint: 'Search biryani, fuchka, mango…',
-                onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                onChanged: (v) =>
+                    setState(() => _query = v.trim().toLowerCase()),
                 prefix: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.search_rounded, color: AppColors.textSecondary),
+                  child: Icon(Icons.search_rounded,
+                      color: AppColors.textSecondary),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -124,7 +131,8 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
                   builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary),
                       );
                     }
                     if (snap.hasError) {
@@ -139,7 +147,8 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
                         : all
                             .where((f) =>
                                 f.nameEn.toLowerCase().contains(_query) ||
-                                (f.nameBn?.toLowerCase().contains(_query) ?? false))
+                                (f.nameBn?.toLowerCase().contains(_query) ??
+                                    false))
                             .toList();
                     if (filtered.isEmpty) {
                       return Center(
@@ -171,7 +180,7 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
                         crossAxisCount: 2,
                         crossAxisSpacing: AppSpacing.md,
                         mainAxisSpacing: AppSpacing.md,
-                        childAspectRatio: 0.82,
+                        childAspectRatio: 0.70,
                       ),
                       itemBuilder: (_, i) {
                         final f = filtered[i];
@@ -181,7 +190,10 @@ class _FoodBrowseScreenState extends State<FoodBrowseScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => FoodDetailScreen(food: f),
+                                builder: (_) => FoodDetailScreen(
+                                  food: f,
+                                  mealType: widget.initialMealType,
+                                ),
                               ),
                             );
                           },
@@ -231,7 +243,10 @@ class _ErrorView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            AppButton(label: 'Retry', icon: Icons.refresh_rounded, onPressed: onRetry),
+            AppButton(
+                label: 'Retry',
+                icon: Icons.refresh_rounded,
+                onPressed: onRetry),
           ],
         ),
       ),
@@ -244,57 +259,21 @@ class _FoodGridCard extends StatelessWidget {
   final FoodItem item;
   final VoidCallback onTap;
 
-  IconData _icon() {
-    final cat = item.category.toLowerCase();
-    if (cat.contains('rice')) return Icons.rice_bowl_rounded;
-    if (cat.contains('curry')) return Icons.soup_kitchen_rounded;
-    if (cat.contains('fish')) return Icons.set_meal_rounded;
-    if (cat.contains('meat')) return Icons.restaurant_rounded;
-    if (cat.contains('fruit')) return Icons.eco_rounded;
-    if (cat.contains('dairy')) return Icons.icecream_rounded;
-    if (cat.contains('drink')) return Icons.local_drink_rounded;
-    if (cat.contains('snack') || cat.contains('street')) {
-      return Icons.bakery_dining_rounded;
-    }
-    return Icons.ramen_dining_rounded;
-  }
-
-  Color _tint() {
-    final cat = item.category.toLowerCase();
-    if (cat.contains('rice')) return AppColors.primary;
-    if (cat.contains('curry')) return AppColors.secondary;
-    if (cat.contains('fish')) return AppColors.info;
-    if (cat.contains('meat')) return AppColors.primaryDark;
-    if (cat.contains('fruit')) return AppColors.secondary;
-    if (cat.contains('dairy')) return AppColors.accent;
-    if (cat.contains('drink')) return AppColors.info;
-    if (cat.contains('snack') || cat.contains('street')) return AppColors.accent;
-    return AppColors.primary;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final tint = _tint();
     return GlassCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    tint.withValues(alpha: 0.85),
-                    tint.withValues(alpha: 0.55),
-                  ],
-                ),
-              ),
-              child: Center(child: Icon(_icon(), color: Colors.white, size: 38)),
+          SizedBox(
+            height: 100,
+            width: double.infinity,
+            child: FoodImage(
+              food: item,
+              fit: BoxFit.cover,
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -303,9 +282,10 @@ class _FoodGridCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
               color: AppColors.textPrimary,
+              height: 1.1,
             ),
           ),
           Text(
@@ -316,21 +296,25 @@ class _FoodGridCard extends StatelessWidget {
               fontSize: 11,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
+              height: 1.1,
             ),
           ),
           const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-            child: Text(
-              '${item.kcal.round()} kcal / ${item.servingG.round()}g',
-              style: const TextStyle(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Text(
+                '${item.kcal.round()} kcal',
+                style: const TextStyle(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
               ),
             ),
           ),

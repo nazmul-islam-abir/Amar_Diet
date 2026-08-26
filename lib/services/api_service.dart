@@ -1,18 +1,18 @@
 // =====================================================================
-// Amar Diet — offline data layer
+// Amar Diet — local data layer (Hive-backed)
 // =====================================================================
 //
-// All data lives in-memory. No HTTP, no Neon, no CPanel. The app still
-// talks to BDApps for OTP / subscription, but every screen (profile,
-// meals, water, plan, progress) reads from this in-memory store.
+// All CRUD is backed by Hive (persistent local DB). On first launch,
+// HiveStore.init() must be awaited from main().
 //
-// The on-screen experience is identical to the original UI kit:
-//  - 20 Bangladesh food items hard-coded
-//  - Profile auto-created from the verified phone on first read
-//  - All CRUD is instant and local
+// BDApps is still used for OTP / subscription but every screen reads
+// from this Hive-backed store. The public API is unchanged from the
+// previous in-memory version, so no screen needs to be edited.
 // =====================================================================
 
+import '../data/bd_food_library.dart' as bd;
 import 'auth_service.dart';
+import 'hive_store.dart';
 
 // ---------------------------------------------------------------------
 //  Models
@@ -90,56 +90,47 @@ class UserProfile {
     return 'obese';
   }
 
-  UserProfile copyWith({
-    String? name,
-    String? email,
-    String? gender,
-    DateTime? dateOfBirth,
-    double? heightCm,
-    double? weightKg,
-    String? activityLevel,
-    String? goal,
-    double? targetWeightKg,
-    String? dietPref,
-    double? bmr,
-    double? tdee,
-    double? dailyCalorieTarget,
-  }) {
-    return UserProfile(
-      id: id,
-      phone: phone,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      gender: gender ?? this.gender,
-      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
-      heightCm: heightCm ?? this.heightCm,
-      weightKg: weightKg ?? this.weightKg,
-      activityLevel: activityLevel ?? this.activityLevel,
-      goal: goal ?? this.goal,
-      targetWeightKg: targetWeightKg ?? this.targetWeightKg,
-      dietPref: dietPref ?? this.dietPref,
-      bmr: bmr ?? this.bmr,
-      tdee: tdee ?? this.tdee,
-      dailyCalorieTarget:
-          dailyCalorieTarget ?? this.dailyCalorieTarget,
-      isPro: isPro,
-    );
-  }
-
-  Map<String, dynamic> toUpdateFields() => {
-        if (name != null) 'name': name,
-        if (email != null) 'email': email,
-        if (gender != null) 'gender': gender,
-        if (dateOfBirth != null)
-          'date_of_birth':
-              '${dateOfBirth!.year.toString().padLeft(4, '0')}-${dateOfBirth!.month.toString().padLeft(2, '0')}-${dateOfBirth!.day.toString().padLeft(2, '0')}',
-        if (heightCm != null) 'height_cm': heightCm,
-        if (weightKg != null) 'weight_kg': weightKg,
-        if (activityLevel != null) 'activity_level': activityLevel,
-        if (goal != null) 'goal': goal,
-        if (targetWeightKg != null) 'target_weight_kg': targetWeightKg,
-        if (dietPref != null) 'diet_pref': dietPref,
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'phone': phone,
+        'name': name,
+        'email': email,
+        'gender': gender,
+        'date_of_birth': dateOfBirth == null
+            ? null
+            : '${dateOfBirth!.year.toString().padLeft(4, '0')}-${dateOfBirth!.month.toString().padLeft(2, '0')}-${dateOfBirth!.day.toString().padLeft(2, '0')}',
+        'height_cm': heightCm,
+        'weight_kg': weightKg,
+        'activity_level': activityLevel,
+        'goal': goal,
+        'target_weight_kg': targetWeightKg,
+        'diet_pref': dietPref,
+        'bmr': bmr,
+        'tdee': tdee,
+        'daily_calorie_target': dailyCalorieTarget,
+        'is_pro': isPro,
       };
+
+  static UserProfile fromMap(Map m) => UserProfile(
+        id: (m['id'] ?? '').toString(),
+        phone: (m['phone'] ?? '').toString(),
+        name: m['name']?.toString(),
+        email: m['email']?.toString(),
+        gender: m['gender']?.toString(),
+        dateOfBirth: m['date_of_birth'] == null
+            ? null
+            : DateTime.tryParse(m['date_of_birth'].toString()),
+        heightCm: (m['height_cm'] as num?)?.toDouble(),
+        weightKg: (m['weight_kg'] as num?)?.toDouble(),
+        activityLevel: m['activity_level']?.toString(),
+        goal: m['goal']?.toString(),
+        targetWeightKg: (m['target_weight_kg'] as num?)?.toDouble(),
+        dietPref: m['diet_pref']?.toString(),
+        bmr: (m['bmr'] as num?)?.toDouble(),
+        tdee: (m['tdee'] as num?)?.toDouble(),
+        dailyCalorieTarget: (m['daily_calorie_target'] as num?)?.toDouble(),
+        isPro: m['is_pro'] == true,
+      );
 }
 
 class FoodItem {
@@ -198,6 +189,36 @@ class MealEntry {
   final double carbsTotal;
   final double fatTotal;
   final DateTime createdAt;
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'food_id': foodId,
+        'food_name': foodName,
+        'meal_type': mealType,
+        'servings': servings,
+        'eaten_on': eatenOn.toIso8601String(),
+        'kcal_total': kcalTotal,
+        'protein_total': proteinTotal,
+        'carbs_total': carbsTotal,
+        'fat_total': fatTotal,
+        'created_at': createdAt.toIso8601String(),
+      };
+
+  static MealEntry fromMap(Map m) => MealEntry(
+        id: (m['id'] ?? '').toString(),
+        foodId: (m['food_id'] ?? '').toString(),
+        foodName: (m['food_name'] ?? '').toString(),
+        mealType: (m['meal_type'] ?? 'snack').toString(),
+        servings: ((m['servings'] as num?)?.toDouble()) ?? 1,
+        eatenOn: DateTime.tryParse(m['eaten_on']?.toString() ?? '') ??
+            DateTime.now(),
+        kcalTotal: ((m['kcal_total'] as num?)?.toDouble()) ?? 0,
+        proteinTotal: ((m['protein_total'] as num?)?.toDouble()) ?? 0,
+        carbsTotal: ((m['carbs_total'] as num?)?.toDouble()) ?? 0,
+        fatTotal: ((m['fat_total'] as num?)?.toDouble()) ?? 0,
+        createdAt: DateTime.tryParse(m['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+      );
 }
 
 class WaterLog {
@@ -231,6 +252,23 @@ class WaterEntry {
   final int amountMl;
   final DateTime loggedOn;
   final DateTime? loggedAt;
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'amount_ml': amountMl,
+        'logged_on': loggedOn.toIso8601String(),
+        'logged_at': loggedAt?.toIso8601String(),
+      };
+
+  static WaterEntry fromMap(Map m) => WaterEntry(
+        id: (m['id'] ?? '').toString(),
+        amountMl: ((m['amount_ml'] as num?)?.toInt()) ?? 0,
+        loggedOn: DateTime.tryParse(m['logged_on']?.toString() ?? '') ??
+            DateTime.now(),
+        loggedAt: m['logged_at'] == null
+            ? null
+            : DateTime.tryParse(m['logged_at'].toString()),
+      );
 }
 
 class DailyPlan {
@@ -250,6 +288,21 @@ class DailyPlan {
   final double kcalTarget;
   final int waterMl;
   final String? notes;
+
+  Map<String, dynamic> toMap() => {
+        'plan_date': planDate.toIso8601String(),
+        'kcal_target': kcalTarget,
+        'water_ml': waterMl,
+        'notes': notes,
+      };
+
+  static DailyPlan fromMap(Map m) => DailyPlan(
+        planDate: DateTime.tryParse(m['plan_date']?.toString() ?? '') ??
+            DateTime.now(),
+        kcalTarget: ((m['kcal_target'] as num?)?.toDouble()) ?? 2000,
+        waterMl: ((m['water_ml'] as num?)?.toInt()) ?? 2500,
+        notes: m['notes']?.toString(),
+      );
 }
 
 class ProgressReport {
@@ -302,266 +355,34 @@ class ProgressReport {
 }
 
 // ---------------------------------------------------------------------
-//  Bangladesh food library — 20 items
+//  FoodItem adapter — converts the comprehensive BD library into the
+//  legacy FoodItem type expected by screens.
 // ---------------------------------------------------------------------
 
-const List<FoodItem> _kFoodLibrary = [
-  FoodItem(
-    id: 'rice_plain',
-    nameEn: 'Plain Rice',
-    nameBn: 'ভাত',
-    category: 'rice',
-    servingG: 150,
-    kcalPerServing: 205,
-    proteinG: 4.3,
-    carbsG: 45,
-    fatG: 0.5,
-    fiberG: 0.6,
-  ),
-  FoodItem(
-    id: 'roti',
-    nameEn: 'Roti',
-    nameBn: 'রুটি',
-    category: 'rice',
-    servingG: 40,
-    kcalPerServing: 120,
-    proteinG: 3.7,
-    carbsG: 24,
-    fatG: 0.8,
-    fiberG: 2.0,
-  ),
-  FoodItem(
-    id: 'chicken_curry',
-    nameEn: 'Chicken Curry',
-    nameBn: 'মুরগির ঝোল',
-    category: 'curry',
-    servingG: 150,
-    kcalPerServing: 270,
-    proteinG: 25,
-    carbsG: 6,
-    fatG: 16,
-    fiberG: 1.0,
-  ),
-  FoodItem(
-    id: 'hilsa_fish',
-    nameEn: 'Hilsa Fish Curry',
-    nameBn: 'ইলিশ মাছের ঝোল',
-    category: 'fish',
-    servingG: 150,
-    kcalPerServing: 290,
-    proteinG: 27,
-    carbsG: 4,
-    fatG: 19,
-    fiberG: 0.5,
-  ),
-  FoodItem(
-    id: 'rui_fish',
-    nameEn: 'Rui Fish Curry',
-    nameBn: 'রুই মাছের ঝোল',
-    category: 'fish',
-    servingG: 150,
-    kcalPerServing: 230,
-    proteinG: 26,
-    carbsG: 3,
-    fatG: 12,
-    fiberG: 0.4,
-  ),
-  FoodItem(
-    id: 'lentil_dal',
-    nameEn: 'Masoor Dal',
-    nameBn: 'মসুর ডাল',
-    category: 'curry',
-    servingG: 150,
-    kcalPerServing: 180,
-    proteinG: 12,
-    carbsG: 25,
-    fatG: 4,
-    fiberG: 6,
-  ),
-  FoodItem(
-    id: 'mixed_veg',
-    nameEn: 'Mixed Vegetables',
-    nameBn: 'মিক্স সবজি',
-    category: 'vegetable',
-    servingG: 150,
-    kcalPerServing: 130,
-    proteinG: 4,
-    carbsG: 15,
-    fatG: 6,
-    fiberG: 5,
-  ),
-  FoodItem(
-    id: 'banana',
-    nameEn: 'Banana',
-    nameBn: 'কলা',
-    category: 'fruit',
-    servingG: 120,
-    kcalPerServing: 105,
-    proteinG: 1.3,
-    carbsG: 27,
-    fatG: 0.4,
-    fiberG: 3.0,
-  ),
-  FoodItem(
-    id: 'boiled_egg',
-    nameEn: 'Boiled Egg',
-    nameBn: 'সেদ্ধ ডিম',
-    category: 'meat',
-    servingG: 50,
-    kcalPerServing: 78,
-    proteinG: 6,
-    carbsG: 0.6,
-    fatG: 5,
-    fiberG: 0,
-  ),
-  FoodItem(
-    id: 'milk',
-    nameEn: 'Milk',
-    nameBn: 'দুধ',
-    category: 'dairy',
-    servingG: 200,
-    kcalPerServing: 120,
-    proteinG: 6,
-    carbsG: 10,
-    fatG: 6,
-    fiberG: 0,
-  ),
-  FoodItem(
-    id: 'tea_sugar',
-    nameEn: 'Tea with Sugar',
-    nameBn: 'চা চিনি',
-    category: 'drink',
-    servingG: 200,
-    kcalPerServing: 70,
-    proteinG: 0.4,
-    carbsG: 17,
-    fatG: 0.5,
-    fiberG: 0,
-  ),
-  FoodItem(
-    id: 'biryani',
-    nameEn: 'Chicken Biryani',
-    nameBn: 'বিরিয়ানি',
-    category: 'rice',
-    servingG: 250,
-    kcalPerServing: 490,
-    proteinG: 22,
-    carbsG: 65,
-    fatG: 17,
-    fiberG: 2.5,
-  ),
-  FoodItem(
-    id: 'khichuri',
-    nameEn: 'Khichuri',
-    nameBn: 'খিচুড়ি',
-    category: 'rice',
-    servingG: 250,
-    kcalPerServing: 420,
-    proteinG: 14,
-    carbsG: 68,
-    fatG: 10,
-    fiberG: 4,
-  ),
-  FoodItem(
-    id: 'curd',
-    nameEn: 'Curd (Doi)',
-    nameBn: 'দই',
-    category: 'dairy',
-    servingG: 150,
-    kcalPerServing: 110,
-    proteinG: 5,
-    carbsG: 9,
-    fatG: 6,
-    fiberG: 0,
-  ),
-  FoodItem(
-    id: 'cucumber',
-    nameEn: 'Cucumber',
-    nameBn: 'শসা',
-    category: 'vegetable',
-    servingG: 100,
-    kcalPerServing: 16,
-    proteinG: 0.7,
-    carbsG: 3.6,
-    fatG: 0.1,
-    fiberG: 0.5,
-  ),
-  FoodItem(
-    id: 'apple',
-    nameEn: 'Apple',
-    nameBn: 'আপেল',
-    category: 'fruit',
-    servingG: 150,
-    kcalPerServing: 78,
-    proteinG: 0.4,
-    carbsG: 21,
-    fatG: 0.3,
-    fiberG: 3.5,
-  ),
-  FoodItem(
-    id: 'beef_curry',
-    nameEn: 'Beef Curry',
-    nameBn: 'গরুর মাংসের ঝোল',
-    category: 'meat',
-    servingG: 150,
-    kcalPerServing: 310,
-    proteinG: 26,
-    carbsG: 5,
-    fatG: 21,
-    fiberG: 0.5,
-  ),
-  FoodItem(
-    id: 'mango',
-    nameEn: 'Mango',
-    nameBn: 'আম',
-    category: 'fruit',
-    servingG: 150,
-    kcalPerServing: 100,
-    proteinG: 1.4,
-    carbsG: 25,
-    fatG: 0.6,
-    fiberG: 2.5,
-  ),
-  FoodItem(
-    id: 'paratha',
-    nameEn: 'Paratha',
-    nameBn: 'পরোটা',
-    category: 'street_food',
-    servingG: 80,
-    kcalPerServing: 290,
-    proteinG: 6,
-    carbsG: 36,
-    fatG: 13,
-    fiberG: 2,
-  ),
-  FoodItem(
-    id: 'samosa',
-    nameEn: 'Samosa',
-    nameBn: 'সমোসা',
-    category: 'snacks',
-    servingG: 60,
-    kcalPerServing: 180,
-    proteinG: 4,
-    carbsG: 22,
-    fatG: 9,
-    fiberG: 1.5,
-  ),
-];
+List<FoodItem> _allFoods() {
+  return [
+    for (final f in bd.BdFoodLibrary.all)
+      FoodItem(
+        id: f.id,
+        nameEn: f.nameEn,
+        nameBn: f.nameBn,
+        category: f.category,
+        servingG: f.servingG,
+        kcalPerServing: f.kcalPerServing,
+        proteinG: f.proteinG,
+        carbsG: f.carbsG,
+        fatG: f.fatG,
+        fiberG: f.fiberG,
+      ),
+  ];
+}
 
 // ---------------------------------------------------------------------
-//  ApiService — in-memory state per verified phone
+//  ApiService — Hive-backed CRUD per verified phone
 // ---------------------------------------------------------------------
 
 class ApiService {
   ApiService._();
-
-  // ----- Store: keyed by phone -----
-  static final Map<String, UserProfile> _profiles = {};
-  static final Map<String, List<MealEntry>> _meals = {};
-  static final Map<String, List<WaterEntry>> _water = {};
-  static final Map<String, DailyPlan> _plans = {};
-  static final Map<String, List<Map<String, dynamic>>> _weight = {};
-  static int _seq = 0;
 
   // ----- Helpers -----
 
@@ -569,6 +390,8 @@ class ApiService {
     final p = AuthService.instance.phone;
     return p ?? 'guest';
   }
+
+  static int _seq = 0;
 
   static String _genId(String prefix) {
     _seq++;
@@ -580,28 +403,23 @@ class ApiService {
 
   static DateTime _normalize(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  static FoodItem? _findFood(String id) {
-    for (final f in _kFoodLibrary) {
-      if (f.id == id) return f;
-    }
-    return null;
-  }
-
   // ----- Profile -----
 
   static Future<UserProfile> ensureProfile() async {
     final phone = _phone();
-    final existing = _profiles[phone];
-    final p = existing ??
-        UserProfile(
-          id: 'local_$phone',
-          phone: phone,
-          isPro: AuthService.instance.isSubscribed,
-          dailyCalorieTarget: 2000,
-        );
+    final box = await HiveStore.instance.boxAsync(phone, 'profile');
+    final stored = box.get('user');
+    final base = stored == null
+        ? UserProfile(
+            id: 'local_$phone',
+            phone: phone,
+            isPro: AuthService.instance.isSubscribed,
+            dailyCalorieTarget: 2000,
+          )
+        : UserProfile.fromMap(Map<String, dynamic>.from(stored as Map));
     // Always refresh subscription state from AuthService.
-    final synced = _rebuildFreshIsPro(p, AuthService.instance.isSubscribed);
-    _profiles[phone] = synced;
+    final synced = _rebuildFreshIsPro(base, AuthService.instance.isSubscribed);
+    await box.put('user', synced.toMap());
     return synced;
   }
 
@@ -628,30 +446,55 @@ class ApiService {
 
   static Future<UserProfile> updateProfile(
       Map<String, dynamic> fields) async {
-    final phone = _phone();
     final current = await ensureProfile();
     UserProfile updated = current;
-    if (fields.containsKey('name')) updated = _rebuild(updated, name: fields['name']?.toString());
-    if (fields.containsKey('email')) updated = _rebuild(updated, email: fields['email']?.toString());
-    if (fields.containsKey('gender')) updated = _rebuild(updated, gender: fields['gender']?.toString());
+    if (fields.containsKey('name')) {
+      updated = _rebuild(updated, name: fields['name']?.toString());
+    }
+    if (fields.containsKey('email')) {
+      updated = _rebuild(updated, email: fields['email']?.toString());
+    }
+    if (fields.containsKey('gender')) {
+      updated = _rebuild(updated, gender: fields['gender']?.toString());
+    }
     if (fields.containsKey('date_of_birth')) {
       final v = fields['date_of_birth']?.toString();
-      updated = _rebuild(updated, dateOfBirth: v == null ? null : DateTime.tryParse(v));
+      updated = _rebuild(updated,
+          dateOfBirth: v == null ? null : DateTime.tryParse(v));
     }
-    if (fields.containsKey('height_cm')) updated = _rebuild(updated, heightCm: (fields['height_cm'] as num?)?.toDouble());
-    if (fields.containsKey('weight_kg')) updated = _rebuild(updated, weightKg: (fields['weight_kg'] as num?)?.toDouble());
-    if (fields.containsKey('activity_level')) updated = _rebuild(updated, activityLevel: fields['activity_level']?.toString());
-    if (fields.containsKey('goal')) updated = _rebuild(updated, goal: fields['goal']?.toString());
-    if (fields.containsKey('target_weight_kg')) updated = _rebuild(updated, targetWeightKg: (fields['target_weight_kg'] as num?)?.toDouble());
-    if (fields.containsKey('diet_pref')) updated = _rebuild(updated, dietPref: fields['diet_pref']?.toString());
+    if (fields.containsKey('height_cm')) {
+      updated = _rebuild(updated,
+          heightCm: (fields['height_cm'] as num?)?.toDouble());
+    }
+    if (fields.containsKey('weight_kg')) {
+      updated = _rebuild(updated,
+          weightKg: (fields['weight_kg'] as num?)?.toDouble());
+    }
+    if (fields.containsKey('activity_level')) {
+      updated =
+          _rebuild(updated, activityLevel: fields['activity_level']?.toString());
+    }
+    if (fields.containsKey('goal')) {
+      updated = _rebuild(updated, goal: fields['goal']?.toString());
+    }
+    if (fields.containsKey('target_weight_kg')) {
+      updated = _rebuild(updated,
+          targetWeightKg:
+              (fields['target_weight_kg'] as num?)?.toDouble());
+    }
+    if (fields.containsKey('diet_pref')) {
+      updated = _rebuild(updated, dietPref: fields['diet_pref']?.toString());
+    }
 
     // Recompute BMR, TDEE, daily calorie target.
     final bmr = _bmrFromProfile(updated);
     final tdee = _tdeeFromProfile(updated, bmr);
     final kcalTarget = _dailyCalorieTarget(updated, tdee);
-    updated = _rebuild(updated, bmr: bmr, tdee: tdee, dailyCalorieTarget: kcalTarget);
+    updated =
+        _rebuild(updated, bmr: bmr, tdee: tdee, dailyCalorieTarget: kcalTarget);
 
-    _profiles[phone] = updated;
+    await (await HiveStore.instance.boxAsync(updated.phone, 'profile'))
+        .put('user', updated.toMap());
     return updated;
   }
 
@@ -730,9 +573,10 @@ class ApiService {
   // ----- Foods -----
 
   static Future<List<FoodItem>> listFoods({String? category}) async {
-    final list = _kFoodLibrary
-        .where((f) => category == null ? true : f.category == category)
-        .toList();
+    final all = _allFoods();
+    final list = category == null
+        ? List<FoodItem>.from(all)
+        : all.where((f) => f.category == category).toList();
     list.sort((a, b) => a.nameEn.compareTo(b.nameEn));
     return list;
   }
@@ -744,9 +588,12 @@ class ApiService {
     String? mealType,
   }) async {
     final phone = _phone();
-    final list = _meals[phone] ?? const [];
+    final box = await HiveStore.instance.boxAsync(phone, 'meals');
+    final all = box.values
+        .map((e) => MealEntry.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
     final day = _normalize(date);
-    return list.where((m) {
+    return all.where((m) {
       if (!_sameDay(m.eatenOn, day)) return false;
       if (mealType != null && m.mealType != mealType) return false;
       return true;
@@ -761,10 +608,10 @@ class ApiService {
     double servings = 1.0,
   }) async {
     final phone = _phone();
-    final food = _findFood(foodId);
-    if (food == null) {
-      throw StateError('Unknown food: $foodId');
-    }
+    final food = _allFoods().firstWhere(
+      (f) => f.id == foodId,
+      orElse: () => throw StateError('Unknown food: $foodId'),
+    );
     final entry = MealEntry(
       id: _genId('meal'),
       foodId: foodId,
@@ -778,37 +625,38 @@ class ApiService {
       fatTotal: food.fatG * servings,
       createdAt: DateTime.now(),
     );
-    _meals.putIfAbsent(phone, () => []).add(entry);
+    await (await HiveStore.instance.boxAsync(phone, 'meals'))
+        .put(entry.id, entry.toMap());
     return entry.id;
   }
 
   static Future<void> deleteMeal(String id) async {
     final phone = _phone();
-    final list = _meals[phone];
-    if (list == null) return;
-    list.removeWhere((m) => m.id == id);
+    await (await HiveStore.instance.boxAsync(phone, 'meals')).delete(id);
   }
 
   // ----- Water -----
 
   static Future<WaterLog> getWater(DateTime date) async {
     final phone = _phone();
-    final list = _water[phone] ?? const [];
-    final day = _normalize(date);
-    final entries = list.where((e) => _sameDay(e.loggedOn, day)).toList()
+    final box = await HiveStore.instance.boxAsync(phone, 'water');
+    final entries = box.values
+        .map((e) => WaterEntry.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList()
       ..sort((a, b) => a.loggedOn.compareTo(b.loggedOn));
-    final total = entries.fold<int>(0, (s, e) => s + e.amountMl);
-    final profile = _profiles[phone];
-    final target = profile?.dailyCalorieTarget == null
+    final day = _normalize(date);
+    final dayEntries =
+        entries.where((e) => _sameDay(e.loggedOn, day)).toList();
+    final total = dayEntries.fold<int>(0, (s, e) => s + e.amountMl);
+    final profile = await ensureProfile();
+    final target = profile.weightKg == null
         ? 2500
-        : (profile!.weightKg == null
-            ? 2500
-            : (profile.weightKg! * 35).round().clamp(2000, 4000));
+        : (profile.weightKg! * 35).round().clamp(2000, 4000);
     return WaterLog(
       date: date,
       totalMl: total,
       targetMl: target,
-      entries: entries,
+      entries: dayEntries,
     );
   }
 
@@ -821,28 +669,30 @@ class ApiService {
       loggedOn: now,
       loggedAt: now,
     );
-    _water.putIfAbsent(phone, () => []).add(entry);
+    await (await HiveStore.instance.boxAsync(phone, 'water'))
+        .put(entry.id, entry.toMap());
   }
 
   static Future<void> deleteWater(String id) async {
     final phone = _phone();
-    final list = _water[phone];
-    if (list == null) return;
-    list.removeWhere((e) => e.id == id);
+    await (await HiveStore.instance.boxAsync(phone, 'water')).delete(id);
   }
 
   // ----- Plan -----
 
   static Future<DailyPlan> getPlan({DateTime? date}) async {
     final phone = _phone();
-    final p = _plans[phone];
-    if (p != null) return p;
+    final box = await HiveStore.instance.boxAsync(phone, 'plan');
+    final stored = box.get('current');
+    if (stored != null) {
+      return DailyPlan.fromMap(Map<String, dynamic>.from(stored as Map));
+    }
     // Default plan derived from profile.
-    final profile = _profiles[phone];
-    final kcal = profile?.dailyCalorieTarget ?? 2000;
-    final water = profile?.weightKg == null
+    final profile = await ensureProfile();
+    final kcal = profile.dailyCalorieTarget ?? 2000;
+    final water = profile.weightKg == null
         ? 2500
-        : (profile!.weightKg! * 35).round().clamp(2000, 4000);
+        : (profile.weightKg! * 35).round().clamp(2000, 4000);
     return DailyPlan(
       planDate: date ?? DateTime.now(),
       kcalTarget: kcal.toDouble(),
@@ -857,12 +707,14 @@ class ApiService {
     String? notes,
   }) async {
     final phone = _phone();
-    _plans[phone] = DailyPlan(
+    final p = DailyPlan(
       planDate: planDate,
       kcalTarget: kcalTarget,
       waterMl: waterMl,
       notes: notes,
     );
+    await (await HiveStore.instance.boxAsync(phone, 'plan'))
+        .put('current', p.toMap());
   }
 
   // ----- Progress -----
@@ -882,13 +734,13 @@ class ApiService {
       fIn += m.fatTotal;
     }
 
-    final week = _buildWeek(phone, today);
+    final week = await _buildWeek(phone, today);
 
-    final profile = _profiles[phone];
-    final streak = _streak(phone);
+    final profile = await ensureProfile();
+    final streak = await _streak(phone);
 
-    final start = _firstWeight(phone);
-    final current = _lastWeight(phone) ?? profile?.weightKg;
+    final start = await _firstWeight(phone);
+    final current = await _lastWeight(phone) ?? profile.weightKg;
     final delta = (start != null && current != null) ? current - start : null;
 
     final kcalTarget = plan.kcalTarget;
@@ -925,8 +777,12 @@ class ApiService {
     );
   }
 
-  static List<Map<String, dynamic>> _buildWeek(String phone, DateTime today) {
-    final meals = _meals[phone] ?? const [];
+  static Future<List<Map<String, dynamic>>> _buildWeek(
+      String phone, DateTime today) async {
+    final box = await HiveStore.instance.boxAsync(phone, 'meals');
+    final meals = box.values
+        .map((e) => MealEntry.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
     final result = <Map<String, dynamic>>[];
     for (int i = 6; i >= 0; i--) {
       final d = today.subtract(Duration(days: i));
@@ -943,8 +799,11 @@ class ApiService {
     return result;
   }
 
-  static int _streak(String phone) {
-    final meals = _meals[phone] ?? const [];
+  static Future<int> _streak(String phone) async {
+    final box = await HiveStore.instance.boxAsync(phone, 'meals');
+    final meals = box.values
+        .map((e) => MealEntry.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
     if (meals.isEmpty) return 0;
     final today = _normalize(DateTime.now());
     int streak = 0;
@@ -960,19 +819,25 @@ class ApiService {
     return streak;
   }
 
-  static double? _firstWeight(String phone) {
-    final list = _weight[phone];
-    if (list == null || list.isEmpty) return null;
-    return (list.first['weight_kg'] as num?)?.toDouble();
+  static Future<double?> _firstWeight(String phone) async {
+    final box = await HiveStore.instance.boxAsync(phone, 'weight');
+    if (box.isEmpty) return null;
+    final first = box.values.first;
+    return ((first) as Map)['weight_kg'] == null
+        ? null
+        : ((first)['weight_kg'] as num?)?.toDouble();
   }
 
-  static double? _lastWeight(String phone) {
-    final list = _weight[phone];
-    if (list == null || list.isEmpty) return null;
-    return (list.last['weight_kg'] as num?)?.toDouble();
+  static Future<double?> _lastWeight(String phone) async {
+    final box = await HiveStore.instance.boxAsync(phone, 'weight');
+    if (box.isEmpty) return null;
+    final last = box.values.last;
+    return ((last) as Map)['weight_kg'] == null
+        ? null
+        : ((last)['weight_kg'] as num?)?.toDouble();
   }
 
-  // ----- Activity (kept for API parity; no-op) -----
+  // ----- Activity -----
 
   static Future<void> logActivity({
     required String activity,
@@ -987,15 +852,22 @@ class ApiService {
   static Future<void> logWeight(double kg, {DateTime? measuredOn}) async {
     final phone = _phone();
     final today = _normalize(measuredOn ?? DateTime.now());
-    _weight.putIfAbsent(phone, () => []).add({
+    final box = await HiveStore.instance.boxAsync(phone, 'weight');
+    final entry = {
       'measured_on':
           '${today.year.toString().padLeft(4, '0')}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}',
       'weight_kg': kg,
-    });
+      'logged_at': DateTime.now().toIso8601String(),
+    };
+    await box.add(entry);
+
     // Mirror into profile so the stat tile + progress card update.
-    final p = _profiles[phone];
-    if (p != null) {
-      _profiles[phone] = _rebuild(p, weightKg: kg);
-    }
+    final p = await ensureProfile();
+    final updated = _rebuild(p, weightKg: kg);
+    await (await HiveStore.instance.boxAsync(phone, 'profile'))
+        .put('user', updated.toMap());
   }
 }
+
+// Note: Hive is not directly referenced in this file; HiveStore wraps
+// all box access.
