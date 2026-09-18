@@ -208,7 +208,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    'শুধুমাত্র Robi ও Airtel গ্রাহকদের জন্য।',
+                                    'শুধুমাত্র Robi ও Cirkle গ্রাহকদের জন্য।',
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700,

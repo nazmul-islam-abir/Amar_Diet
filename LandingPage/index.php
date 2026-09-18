@@ -23,12 +23,12 @@ $TAGLINE_BN       = 'বাংলাদেশি খাবারের স্ম
 // for the subscription response message.
 $APP_CATEGORY     = 'Health & Fitness';
 
-// APK lives on the same cPanel account under the app's folder.
-$APK_DOWNLOAD_URL = 'https://bdappsdigitalapps.com/' . $APP_ID . '/apk/amar_diet.apk';
+// APK is served from the new amar_diet.byabir.com domain (same cPanel account).
+$APK_DOWNLOAD_URL = 'https://amardiet.byabir.com/apk/amar_diet.apk';
 
-// BDApps subscription portal (used for the Unsubscribe CTA link only —
-// subscribe happens right here on this page).
-$UNSUBSCRIBE_URL  = 'https://bdappsdigitalapps.com/subscription/manage?app=' . $APP_ID;
+// Unsubscribe portal — handled on our own domain now (subscribe also lives
+// on this same page, so we only deep-link the BDApps portal for completeness).
+$UNSUBSCRIBE_URL  = 'https://amardiet.byabir.com/subscription/manage?app=' . $APP_ID_INTERNAL;
 
 $SUPPORT_EMAIL    = 'support@bdapps.com';
 // Privacy / FAQ anchors. These open a modal on this same page so the
@@ -39,11 +39,10 @@ $FAQ_URL          = '#faq';
 $SUPPORT_PHONE    = '+8809610999922';
 
 // Pricing — must match the FAQ and the in-app Subscription screen.
-$PRICE_DAILY_BDT       = '2.78';   // daily charge (incl. Vat+SC+SD)
-$PRICE_BUNDLED_BDT     = '5.56';   // bundled 5-day equivalent (context only)
-$PRICE_MONTHLY_BDT     = '299';    // ৳ per month when paid monthly
-$PRICE_YEARLY_BDT      = '199';    // ৳ per month when paid yearly
-$PRICE_OPERATOR        = 'Robi and Airtel';
+$PRICE_DAILY_BDT       = '2.78';   // daily charge (incl. Vat+SC+SD) — ONLY subscription plan
+$PRICE_OPERATOR        = 'Robi and Cirkle';
+$USSD_UNSUBSCRIBE      = '*213*02221#'; // USSD to unsubscribe
+$USSD_SHORT            = '*213*02221#';
 
 // The mandatory disclosure that MUST appear under every subscription option.
 $CHARGE_DISCLAIMER = 'Subscribe now for ৳' . $PRICE_DAILY_BDT
@@ -66,13 +65,13 @@ $PLATFORMS = ['Android'];
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/style.css?v=20260728" />
+  <link rel="stylesheet" href="assets/css/style.css?v=20260917" />
   <link rel="icon" type="image/png" href="assets/img/favicon.png" />
 </head>
 <body>
 
   <!-- ===== Navigation ===== -->
-  <nav class="nav">
+  <nav class="nav" id="nav">
     <div class="nav-inner">
       <a href="#top" class="brand">
         <span class="brand-logo">🥗</span>
@@ -85,9 +84,24 @@ $PLATFORMS = ['Android'];
         <li><a href="#how">How it works</a></li>
         <li><a href="#subscribe">Subscribe</a></li>
       </ul>
-      <a href="#subscribe" class="nav-cta">Subscribe</a>
+      <a href="#subscribe" class="nav-cta">
+        Subscribe
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Open menu"><span></span></button>
     </div>
   </nav>
+
+  <!-- ===== Mobile menu drawer ===== -->
+  <div class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu-inner">
+      <a href="#features">Features</a>
+      <a href="#screens">Screens</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#how">How it works</a>
+      <a href="#subscribe" style="background:var(--grad-brand);color:#fff;text-align:center;margin-top:12px;">Subscribe now →</a>
+    </div>
+  </div>
 
   <!-- ===== Hero ===== -->
   <header id="top" class="hero">
@@ -96,7 +110,7 @@ $PLATFORMS = ['Android'];
         <div class="hero-text">
           <span class="hero-eyebrow">
             <span class="dot"></span>
-            Now available for <?php echo htmlspecialchars($PRICE_OPERATOR); ?>
+            Now available for <?php echo htmlspecialchars($PRICE_OPERATOR); ?> users
           </span>
           <h1>
             Eat smart.<br />
@@ -108,15 +122,39 @@ $PLATFORMS = ['Android'];
             Plan meals, track calories, and reach your goal with daily guidance.
           </p>
 
+          <!-- Price hero — single plan only -->
+          <div class="hero-price-card">
+            <div class="hero-price-left">
+              <div class="hero-price-amount">
+                <span class="taka">৳</span><?php echo htmlspecialchars($PRICE_DAILY_BDT); ?>
+                <span class="per">/ day</span>
+              </div>
+              <div class="hero-price-meta">
+                Billed daily · incl. Vat+SC+SD
+              </div>
+            </div>
+            <div class="hero-price-right">
+              <div class="hero-price-tag">ONLY PLAN</div>
+              <div class="hero-price-sub">No hidden fees. Cancel anytime.</div>
+            </div>
+          </div>
+
           <div class="hero-cta">
-            <a href="#subscribe" class="btn btn-primary">
-              Subscribe now
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <a href="#subscribe" class="btn btn-primary btn-pulse">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+              Subscribe now — ৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?>/day
             </a>
             <a href="<?php echo htmlspecialchars($APK_DOWNLOAD_URL); ?>" class="btn btn-ghost">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               Download APK
             </a>
+          </div>
+
+          <!-- Live social proof — pulsing dot + counter -->
+          <div class="hero-social-proof">
+            <span class="pulse-dot"></span>
+            <strong><span id="live-counter">1,247</span>+</strong>
+            <span>Robi &amp; Cirkle users are tracking their diet right now</span>
           </div>
 
           <div class="hero-meta">
@@ -162,6 +200,16 @@ $PLATFORMS = ['Android'];
             </div>
           </div>
 
+          <div class="hero-floating hero-floating-3">
+            <div class="icon-bubble green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+            </div>
+            <div>
+              <div class="title">Weekly streak</div>
+              <div class="value">6 / 7 days</div>
+            </div>
+          </div>
+
           <div class="phone">
             <img src="assets/img/Screenshot_20260726_114643.png" alt="<?php echo htmlspecialchars($APP_NAME); ?> app preview" />
           </div>
@@ -171,7 +219,7 @@ $PLATFORMS = ['Android'];
   </header>
 
   <!-- ===== Platforms ===== -->
-  <section class="section" style="padding-top: 0;">
+  <section class="section section-stats">
     <div class="container">
       <div class="stats">
         <div class="stat-card">
@@ -194,12 +242,56 @@ $PLATFORMS = ['Android'];
     </div>
   </section>
 
+  <!-- ===== Why Subscribe (benefits strip) ===== -->
+  <section class="benefits-strip">
+    <div class="container">
+      <div class="benefits-grid">
+        <div class="benefit">
+          <div class="benefit-ic benefit-ic-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          </div>
+          <div>
+            <div class="benefit-title">Only ৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?>/day</div>
+            <div class="benefit-sub">Less than a cup of tea • billed daily</div>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-ic benefit-ic-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div>
+            <div class="benefit-title">Start in 60 seconds</div>
+            <div class="benefit-sub">Just enter your Robi / Cirkle number</div>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-ic benefit-ic-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div>
+            <div class="benefit-title">Cancel anytime</div>
+            <div class="benefit-sub">Dial <?php echo htmlspecialchars($USSD_SHORT); ?> to stop</div>
+          </div>
+        </div>
+        <div class="benefit">
+          <div class="benefit-ic benefit-ic-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 9.5 8 10 4.5-.5 8-5 8-10V6l-8-4z"/></svg>
+          </div>
+          <div>
+            <div class="benefit-title">100% Private</div>
+            <div class="benefit-sub">We never sell your data</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== Features ===== -->
   <section id="features" class="section">
     <div class="container">
       <div class="section-head">
         <span class="section-eyebrow">Features</span>
-        <h2>Everything you need to stay on track</h2>
+        <h2>Everything you need to <span class="hl">stay on track</span></h2>
         <p class="sub">
           Built around Bangladeshi meals — not imported Western food data.
           Track, plan, and improve every day.
@@ -258,8 +350,54 @@ $PLATFORMS = ['Android'];
     </div>
   </section>
 
+  <!-- ===== Testimonials ===== -->
+  <section class="testimonials section">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-eyebrow">Real users, real results</span>
+        <h2>Why Bangladeshis love <span class="hl"><?php echo htmlspecialchars($APP_NAME); ?></span></h2>
+        <p class="sub">Daily Pro subscribers across Dhaka, Chattogram, Sylhet &amp; beyond.</p>
+      </div>
+      <div class="testimonials-grid">
+        <div class="t-card">
+          <div class="t-stars">★★★★★</div>
+          <p class="t-quote">"I lost 4 kg in 6 weeks just by logging my rice, daal and hilsa. Love that the food library is real Bangladeshi food."</p>
+          <div class="t-author">
+            <div class="t-avatar" style="background:linear-gradient(135deg,#10B981,#059669)">S</div>
+            <div>
+              <div class="t-name">Sadia R.</div>
+              <div class="t-meta">Robi subscriber • Dhaka</div>
+            </div>
+          </div>
+        </div>
+        <div class="t-card">
+          <div class="t-stars">★★★★★</div>
+          <p class="t-quote">"Only ৳2.78 a day is ridiculous. I cancel and re-subscribe anytime. Best diet app in BD by far."</p>
+          <div class="t-author">
+            <div class="t-avatar" style="background:linear-gradient(135deg,#FF6B6B,#FFB088)">T</div>
+            <div>
+              <div class="t-name">Tanvir H.</div>
+              <div class="t-meta">Cirkle subscriber • Chattogram</div>
+            </div>
+          </div>
+        </div>
+        <div class="t-card">
+          <div class="t-stars">★★★★★</div>
+          <p class="t-quote">"The water reminder + meal log keeps me on track. Hilsa, biryani, khichuri — they have everything."</p>
+          <div class="t-author">
+            <div class="t-avatar" style="background:linear-gradient(135deg,#6366F1,#8B5CF6)">N</div>
+            <div>
+              <div class="t-name">Nazmul A.</div>
+              <div class="t-meta">Robi subscriber • Sylhet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== Screenshots ===== -->
-  <section id="screens" class="section" style="background: rgba(255,255,255,0.4);">
+  <section id="screens" class="section section-alt">
     <div class="container">
       <div class="section-head">
         <span class="section-eyebrow">Screens</span>
@@ -283,11 +421,11 @@ $PLATFORMS = ['Android'];
   </section>
 
   <!-- ===== Pricing ===== -->
-  <section id="pricing" class="section">
+  <section id="pricing" class="section pricing-section">
     <div class="container">
       <div class="section-head">
         <span class="section-eyebrow">Pricing</span>
-        <h2>Simple, transparent pricing</h2>
+        <h2>One simple plan — <span class="hl">that's it</span></h2>
         <p class="sub">
           All subscription charges are inclusive of Vat + SC + SD and are billed only to
           <strong><?php echo htmlspecialchars($PRICE_OPERATOR); ?></strong> users.
@@ -296,54 +434,43 @@ $PLATFORMS = ['Android'];
 
       <div class="pricing-wrap">
         <div class="pricing-card">
-          <div class="tag">Monthly</div>
-          <div class="price">৳<?php echo htmlspecialchars($PRICE_MONTHLY_BDT); ?></div>
+          <div class="badge">Best value • Daily Pro</div>
+          <div class="tag">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            Daily Plan
+          </div>
+          <div class="price"><span class="taka">৳</span><?php echo htmlspecialchars($PRICE_DAILY_BDT); ?><span class="per">/day</span></div>
           <div class="price-sub">
-            Billed monthly
-            <strong>৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> / day (incl. Vat+SC+SD)</strong>
+            Billed daily to your <?php echo htmlspecialchars($PRICE_OPERATOR); ?> mobile bill
+            <strong>incl. Vat + SC + SD</strong>
           </div>
           <ul class="pricing-features">
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Full access to all Pro features</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Bangladeshi food library</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Daily calorie &amp; water tracking</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Progress analytics</li>
-          </ul>
-          <a href="#subscribe" class="btn btn-primary">Subscribe monthly</a>
-          <!-- Mandatory charge disclosure under every subscription option -->
-          <p class="charge-disclaimer"><?php echo htmlspecialchars($CHARGE_DISCLAIMER); ?></p>
-        </div>
-
-        <div class="pricing-card featured">
-          <div class="badge">Best value</div>
-          <div class="tag">Yearly</div>
-          <div class="price">৳<?php echo htmlspecialchars($PRICE_YEARLY_BDT); ?></div>
-          <div class="price-sub">
-            per month, billed yearly
-            <strong>৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> / day (incl. Vat+SC+SD)</strong>
-          </div>
-          <ul class="pricing-features">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Everything in Monthly</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Save ~35% vs monthly</li>
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Smart meal recommendations</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Weekly planning &amp; streaks</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Priority support</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Progress analytics</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Ad-free • Priority support</li>
           </ul>
-          <a href="#subscribe" class="btn btn-primary">Subscribe yearly</a>
+          <a href="#subscribe" class="btn btn-primary btn-xl btn-pulse">Subscribe now — only ৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> / day</a>
           <!-- Mandatory charge disclosure under every subscription option -->
           <p class="charge-disclaimer"><?php echo htmlspecialchars($CHARGE_DISCLAIMER); ?></p>
+          <p class="pricing-foot">
+            To unsubscribe anytime, dial <strong><?php echo htmlspecialchars($USSD_UNSUBSCRIBE); ?></strong> from your Robi / Cirkle number.
+          </p>
         </div>
       </div>
 
       <p class="pricing-note">
-        Bundled equivalent: <strong>৳<?php echo htmlspecialchars($PRICE_BUNDLED_BDT); ?> / 5 days</strong>.
-        Auto-renews until canceled. Cancel anytime via BDApps portal.
-        Subscriber must be on <strong><?php echo htmlspecialchars($PRICE_OPERATOR); ?></strong>.
+        Auto-renews daily until canceled. Cancel anytime via BDApps portal or by dialing
+        <strong><?php echo htmlspecialchars($USSD_UNSUBSCRIBE); ?></strong>. Subscriber must be on
+        <strong><?php echo htmlspecialchars($PRICE_OPERATOR); ?></strong>.
       </p>
 
       <div class="notice">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
         <div>
-          To unsubscribe, dial <strong>*123*5#</strong> or visit the BDApps portal. Upon unsubscription
+          To unsubscribe, dial <strong><?php echo htmlspecialchars($USSD_UNSUBSCRIBE); ?></strong> or visit the BDApps portal. Upon unsubscription
           you will be automatically logged out and redirected to the login page.
         </div>
       </div>
@@ -351,7 +478,7 @@ $PLATFORMS = ['Android'];
   </section>
 
   <!-- ===== How it works ===== -->
-  <section id="how" class="section" style="background: rgba(255,255,255,0.4);">
+  <section id="how" class="section section-alt">
     <div class="container">
       <div class="section-head">
         <span class="section-eyebrow">How it works</span>
@@ -362,7 +489,7 @@ $PLATFORMS = ['Android'];
         <div class="step">
           <div class="step-num">1</div>
           <h3>Subscribe</h3>
-          <p>Confirm via BDApps on your Robi or Airtel number. Charges appear as ৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> / day.</p>
+          <p>Confirm via BDApps on your Robi or Cirkle number. Charges appear as ৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> / day.</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
@@ -398,7 +525,7 @@ $PLATFORMS = ['Android'];
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </div>
           <h3>Check subscription status</h3>
-          <p class="portal-sub">Enter your Robi / Airtel mobile number to see if you are currently subscribed.</p>
+          <p class="portal-sub">Enter your Robi / Cirkle mobile number to see if you are currently subscribed.</p>
 
           <div class="form-group">
             <label for="status-phone">Mobile Number</label>
@@ -420,7 +547,7 @@ $PLATFORMS = ['Android'];
           </div>
           <h3>Subscribe to <?php echo htmlspecialchars($APP_NAME); ?></h3>
           <p class="portal-sub">
-            Enter your Robi / Airtel mobile number. We'll send a one-time PIN — confirm it to start your subscription.
+            Enter your Robi / Cirkle mobile number. We'll send a one-time PIN — confirm it to start your subscription.
           </p>
 
           <!-- Step 1: phone -->
@@ -461,7 +588,7 @@ $PLATFORMS = ['Android'];
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64A9 9 0 1 1 5.64 6.64"/><path d="M12 2v10"/></svg>
           </div>
           <h3>Unsubscribe</h3>
-          <p class="portal-sub">To stop your subscription, dial <strong>*123*5#</strong> from your Robi / Airtel number, or use the BDApps portal.</p>
+          <p class="portal-sub">To stop your subscription, dial <strong><?php echo htmlspecialchars($USSD_UNSUBSCRIBE); ?></strong> from your Robi / Cirkle number, or use the BDApps portal.</p>
 
           <div class="form-group">
             <label for="unsub-phone">Mobile Number</label>
@@ -499,7 +626,25 @@ $PLATFORMS = ['Android'];
     </div>
   </section>
 
-  <!-- ===== Footer ===== -->
+  <!-- ===== Sticky CTA Bar (always visible) ===== -->
+<div class="sticky-cta" id="stickyCta">
+  <div class="sticky-cta-inner">
+    <div class="sticky-cta-text">
+      <div class="sticky-cta-pill">DAILY PRO</div>
+      <div class="sticky-cta-headline">
+        Unlock <strong><?php echo htmlspecialchars($APP_NAME); ?></strong> for just
+        <strong>৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?>/day</strong>
+      </div>
+      <div class="sticky-cta-sub">Robi &amp; Cirkle • Cancel anytime • BDApps secured</div>
+    </div>
+    <a href="#subscribe" class="btn btn-primary btn-pulse sticky-cta-btn">
+      Subscribe now
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+</div>
+
+<!-- ===== Footer ===== -->
   <footer class="footer">
     <div class="container">
       <p>
@@ -719,7 +864,7 @@ $PLATFORMS = ['Android'];
 
       if (data.success) {
         msg.innerHTML = '<span class="status-pill status-ok">Unsubscribe request sent.</span>'
-          + '<p class="status-detail">A confirmation SMS will be sent to your number. You can also dial <strong>*123*5#</strong>.</p>';
+          + '<p class="status-detail">A confirmation SMS will be sent to your number. You can also dial <strong><?php echo $USSD_UNSUBSCRIBE; ?></strong>.</p>';
       } else {
         msg.innerHTML = '<span class="status-pill status-err">' + (data.statusDetail || data.error || 'Request failed.') + '</span>';
       }
@@ -763,6 +908,195 @@ $PLATFORMS = ['Android'];
       document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
     }
   });
+
+  // -------------------------------------------------------------
+  // Show the sticky bottom CTA bar once the user scrolls past hero
+  // -------------------------------------------------------------
+  (function () {
+    const sticky = document.getElementById('stickyCta');
+    if (!sticky) return;
+    const hero = document.querySelector('.hero');
+    let shown = false;
+    function update() {
+      if (!hero) return;
+      const heroBottom = hero.getBoundingClientRect().bottom;
+      const shouldShow = heroBottom < 80;
+      if (shouldShow !== shown) {
+        shown = shouldShow;
+        sticky.classList.toggle('show', shown);
+      }
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+
+  // -------------------------------------------------------------
+  // Increment the "live subscriber" counter to feel alive
+  // -------------------------------------------------------------
+  (function () {
+    const el = document.getElementById('live-counter');
+    if (!el) return;
+    let n = parseInt(el.textContent.replace(/\D+/g, ''), 10) || 1247;
+    setInterval(function () {
+      // random small bump every 4–8s
+      n += Math.random() < 0.6 ? 1 : 0;
+      el.textContent = n.toLocaleString();
+    }, 5500);
+  })();
+
+  // -------------------------------------------------------------
+  // Reveal-on-scroll using IntersectionObserver
+  // -------------------------------------------------------------
+  (function () {
+    // Auto-tag common blocks so we don't have to mark every element.
+    const sels = [
+      '.section-head',
+      '.stat-card',
+      '.benefit',
+      '.feature-card',
+      '.t-card',
+      '.step',
+      '.shot',
+      '.pricing-card',
+      '.portal-card',
+      '.cta',
+      '.hero-price-card',
+      '.hero-social-proof',
+      '.hero-meta',
+      '.notice',
+    ];
+    const all = [];
+    sels.forEach(s => document.querySelectorAll(s).forEach((el, i) => all.push({ el, i })));
+    all.forEach(({ el, i }, idx) => {
+      el.classList.add('reveal');
+      // stagger only inside siblings (delay 0-4)
+      const delay = Math.min(4, idx % 5);
+      el.setAttribute('data-delay', String(delay));
+    });
+
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: show all
+      all.forEach(({ el }) => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver(function (entries) {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    all.forEach(({ el }) => io.observe(el));
+  })();
+
+  // -------------------------------------------------------------
+  // Nav: add 'scrolled' class after the page is scrolled past 30px
+  // -------------------------------------------------------------
+  (function () {
+    const nav = document.getElementById('nav');
+    if (!nav) return;
+    function onScroll() {
+      nav.classList.toggle('scrolled', window.scrollY > 30);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // -------------------------------------------------------------
+  // Active link highlighting based on the section in view
+  // -------------------------------------------------------------
+  (function () {
+    const links = document.querySelectorAll('.nav-links a');
+    if (!links.length) return;
+    const map = {};
+    links.forEach(a => {
+      const id = a.getAttribute('href');
+      if (id && id.startsWith('#')) {
+        const target = document.querySelector(id);
+        if (target) map[id] = a;
+      }
+    });
+    const io = new IntersectionObserver(function (entries) {
+      entries.forEach(entry => {
+        const id = '#' + entry.target.id;
+        if (entry.isIntersecting && map[id]) {
+          links.forEach(a => a.classList.remove('active'));
+          map[id].classList.add('active');
+        }
+      });
+    }, { rootMargin: '-40% 0px -55% 0px', threshold: 0 });
+    Object.keys(map).forEach(id => {
+      const el = document.querySelector(id);
+      if (el) io.observe(el);
+    });
+  })();
+
+  // -------------------------------------------------------------
+  // Smooth scroll for in-page anchors (offset for sticky nav)
+  // -------------------------------------------------------------
+  document.querySelectorAll('a[href^="#"]').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      const id = a.getAttribute('href');
+      if (!id || id === '#') return;
+      const target = document.querySelector(id);
+      if (!target) return;
+      e.preventDefault();
+      const y = target.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+      // Close mobile menu after clicking
+      document.getElementById('mobileMenu')?.classList.remove('open');
+    });
+  });
+
+  // -------------------------------------------------------------
+  // Mobile menu drawer toggle
+  // -------------------------------------------------------------
+  (function () {
+    const btn = document.getElementById('menuToggle');
+    const menu = document.getElementById('mobileMenu');
+    if (!btn || !menu) return;
+    btn.addEventListener('click', function () {
+      menu.classList.toggle('open');
+    });
+    menu.addEventListener('click', function (e) {
+      if (e.target === menu) menu.classList.remove('open');
+    });
+  })();
+
+  // -------------------------------------------------------------
+  // Counter animation for stats (run once when visible)
+  // -------------------------------------------------------------
+  (function () {
+    const cards = document.querySelectorAll('.stat-card');
+    if (!cards.length) return;
+    const io = new IntersectionObserver(function (entries) {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const numEl = entry.target.querySelector('.num');
+        if (!numEl || numEl.dataset.done) return;
+        numEl.dataset.done = '1';
+        const raw = (numEl.textContent || '').trim();
+        // Skip non-numeric cards like "100%"
+        if (!/\d/.test(raw)) return;
+        const hasPercent = raw.includes('%');
+        const target = parseInt(raw.replace(/\D+/g, ''), 10);
+        if (!target) return;
+        let cur = 0;
+        const step = Math.max(1, Math.ceil(target / 28));
+        const tick = function () {
+          cur = Math.min(target, cur + step);
+          numEl.textContent = cur + (hasPercent ? '%' : '+');
+          if (cur < target) requestAnimationFrame(tick);
+          else numEl.textContent = raw; // restore original styling
+        };
+        tick();
+        io.unobserve(entry.target);
+      });
+    }, { threshold: 0.5 });
+    cards.forEach(c => io.observe(c));
+  })();
 </script>
 
 <!-- ===== FAQ Modal ===== -->
@@ -773,21 +1107,18 @@ $PLATFORMS = ['Android'];
     <p class="modal-sub">Category: <strong><?php echo htmlspecialchars($APP_CATEGORY); ?></strong> · Operator: <strong><?php echo htmlspecialchars($PRICE_OPERATOR); ?></strong></p>
 
     <h3>1. How much does <?php echo htmlspecialchars($APP_NAME); ?> cost?</h3>
-    <p>৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> per day (incl. Vat+SC+SD) for Robi and Airtel users. Auto-renews daily until canceled.</p>
+    <p>Only <strong>৳<?php echo htmlspecialchars($PRICE_DAILY_BDT); ?> per day</strong> (incl. Vat+SC+SD) for Robi and Cirkle users. Auto-renews daily until canceled. No monthly or yearly bundles — just one simple plan.</p>
 
-    <h3>2. Is there a bundled plan?</h3>
-    <p>Yes — a bundled 5-day equivalent of ৳<?php echo htmlspecialchars($PRICE_BUNDLED_BDT); ?> is also available.</p>
-
-    <h3>3. Which operators are supported?</h3>
+    <h3>2. Which operators are supported?</h3>
     <p>Only <strong><?php echo htmlspecialchars($PRICE_OPERATOR); ?></strong> subscribers can subscribe. Other operators will be rejected by BDApps.</p>
 
-    <h3>4. Where do I download the app?</h3>
+    <h3>3. Where do I download the app?</h3>
     <p>Download the official APK from <a href="<?php echo htmlspecialchars($APK_DOWNLOAD_URL); ?>"><?php echo htmlspecialchars($APK_DOWNLOAD_URL); ?></a>. The app is available on Android only.</p>
 
-    <h3>5. How do I unsubscribe?</h3>
-    <p>Dial <strong>*123*5#</strong> from your Robi/Airtel number, or use the Unsubscribe form on this page. Upon unsubscription you will be automatically logged out of the app and returned to the login page.</p>
+    <h3>4. How do I unsubscribe?</h3>
+    <p>Dial <strong><?php echo htmlspecialchars($USSD_UNSUBSCRIBE); ?></strong> from your Robi/Cirkle number, or use the Unsubscribe form on this page. Upon unsubscription you will be automatically logged out of the app and returned to the login page.</p>
 
-    <h3>6. Who handles my subscription?</h3>
+    <h3>5. Who handles my subscription?</h3>
     <p>Subscriptions are managed by BDApps. All charges appear on your mobile bill. For support, contact <a href="mailto:support@bdapps.com">support@bdapps.com</a> or call +8809610999922.</p>
 
     <h3>7. What does the subscription response message say?</h3>

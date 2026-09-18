@@ -30,7 +30,7 @@ $APP_ID        = 'NADB26045';
 $APP_ID_INTERNAL = 'APP_139165';
 $APP_NAME      = 'Amar Diet';
 $APP_CATEGORY  = 'Health & Fitness';
-$APK_URL       = 'https://bdappsdigitalapps.com/' . $APP_ID . '/apk/amar_diet.apk';
+$APK_URL       = 'https://amardiet.byabir.com/apk/amar_diet.apk';
 $LOG_FILE      = __DIR__ . '/subscription_listener.log';
 
 $raw = file_get_contents('php://input');

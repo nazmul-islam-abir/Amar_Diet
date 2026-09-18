@@ -4,7 +4,9 @@
       "Bash(flutter pub:*)",
       "Bash(flutter analyze:*)",
       "Bash(flutter build:*)",
-      "Skill(flutter-invoice-app-builder)"
+      "Skill(flutter-invoice-app-builder)",
+      "Bash(php -l \"C:\\\\Users\\\\Nazmul\\\\StudioProjects\\\\amar_diet\\\\LandingPage\\\\index.php\")",
+      "Bash(where php:*)"
     ]
   }
 }

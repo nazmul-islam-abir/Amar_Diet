@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-/// HTTP wrapper for the BDApps CPanel backend (NADB26045).
+/// HTTP wrapper for the Amar Diet BDApps backend (https://amardiet.byabir.com).
 ///
 /// All endpoints accept `application/x-www-form-urlencoded` POST bodies and
-/// respond with JSON. See `mybackend/index.php` for the full contract.
+/// respond with JSON. See `LandingPage/*.php` for the full contract.
 class BdappsService {
   BdappsService._();
 
-  static const String _base = 'https://bdappsdigitalapps.com/NADB26045';
+  static const String _base = 'https://amardiet.byabir.com';
 
   static const Map<String, String> _headers = {
     'Content-Type': 'application/x-www-form-urlencoded',

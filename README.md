@@ -1,11 +1,11 @@
 # Amar Diet — আপনার ডায়েট কোচ 🥗
 
-[![Platform](https://img.shields.io/badge/Platform-Android-10B981?style=for-the-badge&logo=android)](https://bdappsdigitalapps.com/NADB26045/)
-[![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)](https://bdappsdigitalapps.com/NADB26045/)
+[![Platform](https://img.shields.io/badge/Platform-Android-10B981?style=for-the-badge&logo=android)](https://amardiet.byabir.com/)
+[![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)](https://amardiet.byabir.com/)
 
 **Amar Diet** is a personalized nutrition and diet-tracking app built specifically for Bangladeshi users. Track calories, monitor water intake, and reach your fitness goals with a food library designed around the meals you actually eat.
 
-🔗 **Official Website:** [https://bdappsdigitalapps.com/NADB26045/](https://bdappsdigitalapps.com/NADB26045/)
+🔗 **Official Website:** [https://amardiet.byabir.com/](https://amardiet.byabir.com/)
 
 ---
 
@@ -33,7 +33,7 @@
 
 ## 🛠️ How It Works
 
-1. **Subscribe:** Active Robi or Airtel users can subscribe via Web, SMS, or USSD.
+1. **Subscribe:** Active Robi or Cirkle users can subscribe via Web, SMS, or USSD.
 2. **Install:** Download the official APK from our portal.
 3. **Log In:** Use your verified mobile number and a secure BDApps OTP code.
 4. **Track:** Start logging your meals and watch your progress!
@@ -46,7 +46,7 @@ Amar Diet is a premium service powered by **BDApps**.
 
 - **Daily Charge:** ৳2.78 / day (incl. Vat+SC+SD)
 - **Bundled Equivalent:** ৳5.56 / 5 days
-- **Operator:** Robi and Airtel users only.
+- **Operator:** Robi and Cirkle users only.
 
 ---
 
@@ -64,6 +64,6 @@ Amar Diet is a premium service powered by **BDApps**.
 
 ## 🌐 Get Started
 Visit our landing page to subscribe or download the latest APK:
-👉 [**Amar Diet Portal**](https://bdappsdigitalapps.com/NADB26045/)
+👉 [**Amar Diet Portal**](https://amardiet.byabir.com/)
 
 © 2024 Amar Diet. All rights reserved.

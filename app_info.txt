@@ -1,0 +1,33 @@
+App Name: Amar Diet — আপনার ডায়েট কোচ 🥗
+Tagline: Personalized nutrition tracking for Bangladeshi users.
+
+---
+DESCRIPTION:
+Amar Diet is a comprehensive nutrition and diet-tracking application built specifically for Bangladesh. Whether you want to lose weight, maintain your current physique, or gain muscle, Amar Diet provides the tools you need using accurate local food data.
+
+Log your daily meals (from plain rice to hilsa curry), monitor your water intake, and track your macro-nutrients through a beautiful, glass-morphism inspired interface.
+
+---
+KEY FEATURES:
+- 🇧🇩 Bangladeshi Food Library: Log meals like plain rice, hilsa curry, biryani, and khichuri with accurate local nutrition data.
+- 🔥 Calorie Tracking: Set your goal (Lose, Maintain, or Gain weight) and let the app calculate your BMR and TDEE.
+- 💧 Water Tracker: Log your daily water intake with a clean, visual interface.
+- 📈 Progress Analytics: View weekly trends, macro-nutrient splits, and weight history in one dashboard.
+- 🧠 Smart Recommendations: Get meal suggestions tailored to your health goals and preferences.
+- 📊 Weekly Planning: Set targets for the week and keep your streak alive.
+
+---
+SUBSCRIPTION & PRICING:
+Amar Diet is a premium service powered by BDApps, available exclusively for Robi and Cirkle users.
+- Daily Charge: ৳2.78 / day (incl. Vat+SC+SD)
+- Bundled Equivalent: ৳5.56 / 5 days
+- Subscription Method: Web, SMS, or USSD.
+
+---
+TECHNICAL INFO:
+- Platform: Android (Min SDK 21)
+- Application ID: com.example.amar_diet
+- Developer: Nazmul
+- Official Portal: https://amardiet.byabir.com/
+
+© 2024 Amar Diet. All rights reserved.
